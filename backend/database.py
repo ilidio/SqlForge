@@ -22,7 +22,14 @@ def get_connection_url(config: ConnectionConfig) -> str:
 
 def get_engine(config: ConnectionConfig) -> Engine:
     url = get_connection_url(config)
-    return create_engine(url)
+    # Add connect_args for timeout where possible
+    connect_args = {}
+    if config.type == 'postgresql':
+        connect_args = {"connect_timeout": 5}
+    elif config.type == 'mysql':
+        connect_args = {"connect_timeout": 5}
+    
+    return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 
 def get_schema_context(config: ConnectionConfig) -> str:
     # ... (Keep existing implementation for SQL)
@@ -51,11 +58,11 @@ def get_schema_context(config: ConnectionConfig) -> str:
 def test_connection(config: ConnectionConfig):
     try:
         if config.type == 'redis':
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, socket_connect_timeout=5)
             r.ping()
             return True, "Connected to Redis successfully"
         elif config.type == 'mongodb':
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=5000)
             client.admin.command('ping')
             return True, "Connected to MongoDB successfully"
         else:

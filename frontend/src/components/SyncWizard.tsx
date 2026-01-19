@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { api, type ConnectionConfig } from '../api';
-import { Database, ArrowRight, CheckCircle2, RefreshCw, Zap, ShieldCheck, FileCode } from 'lucide-react';
+import { toast } from 'sonner';
+import { Database, ArrowRight, CheckCircle2, RefreshCw, Zap, ShieldCheck, FileCode, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SyncWizardProps {
@@ -46,10 +47,14 @@ export default function SyncWizard({ open, onOpenChange, mode }: SyncWizardProps
         setLoading(true);
         try {
             const result = await api.executeSync(sourceId, targetId, false);
-            alert(result.message);
-            if (result.status === 'success') onOpenChange(false);
+            if (result.status === 'success') {
+                toast.success(result.message);
+                onOpenChange(false);
+            } else {
+                toast.info(result.message);
+            }
         } catch (e: any) {
-            alert(`Error: ${e.response?.data?.detail || e.message}`);
+            toast.error(`Error: ${e.response?.data?.detail || e.message}`);
         } finally {
             setLoading(false);
         }

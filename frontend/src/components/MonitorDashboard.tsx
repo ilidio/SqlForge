@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { api, type ConnectionConfig } from '../api';
+import { toast } from 'sonner';
 import { Activity, Users, Clock, Zap, Database, Trash2, RefreshCw, BarChart3, ShieldAlert, ExternalLink, Layout } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -195,7 +196,7 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                                                     )}>{p.state}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <Button variant="ghost" size="icon-sm" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => alert("Process Termination: Pro Feature")}>
+                                                    <Button variant="ghost" size="icon-sm" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => toast.info("Process Termination: Pro Feature")}>
                                                         <Trash2 size={14} />
                                                     </Button>
                                                 </td>
@@ -224,7 +225,10 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                                     >
                                         <ExternalLink size={16} /> Open Grafana Dashboard
                                     </Button>
-                                    <Button variant="outline" onClick={() => alert("Prometheus configuration auto-generated in tests/docker/prometheus/prometheus.yml")}>
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => toast.info("Prometheus configuration auto-generated in tests/docker/prometheus/prometheus.yml")}
+                                    >
                                         View Config
                                     </Button>
                                 </div>

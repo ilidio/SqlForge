@@ -40,6 +40,8 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [tables, setTables] = useState<Record<string, {name: string, type: string}[]>>({});
   const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+  const [connectionErrors, setConnectionErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
 
   const loadHistory = async () => {
@@ -62,13 +64,34 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
     const isExpanded = expanded[conn.id];
     setExpanded(prev => ({ ...prev, [conn.id!]: !isExpanded }));
 
-    if (!isExpanded && !tables[conn.id]) {
+    // If we are expanding and don't have tables (or had an error), try to fetch
+    if (!isExpanded && (!tables[conn.id] || connectionErrors[conn.id])) {
+        setLoadingIds(prev => new Set(prev).add(conn.id!));
         try {
+            setConnectionErrors(prev => {
+                const next = { ...prev };
+                delete next[conn.id!];
+                return next;
+            });
             const t = await api.getTables(conn.id);
             setTables(prev => ({ ...prev, [conn.id!]: t }));
             setConnectedIds(prev => new Set(prev).add(conn.id!));
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            setConnectionErrors(prev => ({ ...prev, [conn.id!]: e.response?.data?.detail || e.message }));
+            setConnectedIds(prev => {
+                const next = new Set(prev);
+                next.delete(conn.id!);
+                return next;
+            });
+            // Keep it expanded so error is visible
+            setExpanded(prev => ({ ...prev, [conn.id!]: true }));
+        } finally {
+            setLoadingIds(prev => {
+                const next = new Set(prev);
+                next.delete(conn.id!);
+                return next;
+            });
         }
     }
   };
@@ -176,7 +199,28 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
                                 
                                 {isExpanded && (
                                     <div className="ml-4 pl-2 border-l border-sidebar-border mt-0.5 space-y-2">
-                                        {tables[conn.id!] ? (
+                                        {loadingIds.has(conn.id!) ? (
+                                            <div className="text-xs text-muted-foreground/60 py-1 pl-2 flex items-center gap-2 animate-pulse">
+                                                <RefreshCw size={10} className="animate-spin"/> Connecting...
+                                            </div>
+                                        ) : connectionErrors[conn.id!] ? (
+                                            <div className="text-[10px] text-destructive bg-destructive/10 p-2 rounded mr-2 flex flex-col gap-1">
+                                                <div className="font-bold flex items-center gap-1">
+                                                    <X size={10} /> Connection Failed
+                                                </div>
+                                                <div className="opacity-80 break-words" title={connectionErrors[conn.id!]}>
+                                                    {connectionErrors[conn.id!]}
+                                                </div>
+                                                <Button 
+                                                    variant="link" 
+                                                    size="sm" 
+                                                    className="h-auto p-0 text-[10px] justify-start text-destructive hover:text-destructive underline"
+                                                    onClick={(e) => { e.stopPropagation(); toggleConnection(conn); }}
+                                                >
+                                                    Retry
+                                                </Button>
+                                            </div>
+                                        ) : tables[conn.id!] ? (
                                             ['table', 'view', 'function', 'trigger', 'procedure', 'collection', 'kv'].map(type => {
                                                 const typeItems = tables[conn.id!].filter(t => t.type === type);
                                                 if (typeItems.length === 0) return null;

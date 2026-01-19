@@ -40,7 +40,8 @@ def reflect_schema_to_sql(engine, dialect: str) -> str:
         if pks:
             column_defs.append(f"PRIMARY KEY ({', '.join(pks)})")
             
-        create_table = f"CREATE TABLE {table_name} (\n  {',\n  '.join(column_defs)}\n);"
+        column_defs_str = ",\n  ".join(column_defs)
+        create_table = f"CREATE TABLE {table_name} (\n  {column_defs_str}\n);"
         ddl_statements.append(create_table)
         
     return "\n\n".join(ddl_statements)

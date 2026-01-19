@@ -13,6 +13,7 @@ import BackupWizard from './components/BackupWizard';
 import MonitorDashboard from './components/MonitorDashboard';
 import { api, type ConnectionConfig } from './api';
 import { useTheme } from './lib/ThemeContext';
+import { Toaster, toast } from 'sonner';
 import { X, Database, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -56,10 +57,42 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Command Palette (⌘K)
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen(prev => !prev);
       }
+      
+      // New Query (⌘Q) - Requires an active connection
+      if ((e.metaKey || e.ctrlKey) && e.key === 'q') {
+          e.preventDefault();
+          if (selectedConnectionId) {
+              handleOpenQuery(selectedConnectionId);
+          } else if (connections.length > 0) {
+              handleOpenQuery(connections[0].id!);
+          }
+      }
+
+      // New Connection (⌘N)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+          e.preventDefault();
+          setIsModalOpen(true);
+      }
+
+      // Settings (⌘,)
+      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+          e.preventDefault();
+          setIsSettingsOpen(true);
+      }
+
+      // Execute Query (F5 or ⌘Enter)
+      if (e.key === 'F5' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
+          if (activeTabId && tabs.find(t => t.id === activeTabId)?.type === 'query') {
+              e.preventDefault();
+              activeQueryTabRef.current?.executeQuery();
+          }
+      }
+
       if (e.key === 'F11') {
           e.preventDefault();
           if (!document.fullscreenElement) {
@@ -75,7 +108,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [selectedConnectionId, connections, activeTabId, tabs]);
 
   const handleOpenQuery = (connId: string, sql: string = 'SELECT * FROM ') => {
     const newTab: Tab = {
@@ -108,9 +141,14 @@ function App() {
         };
         setTabs([...tabs, newTab]);
         setActiveTabId(newTab.id);
-    } catch {
-        alert("Error opening Object Browser");
-    }
+          if (conn) {
+              handleOpenQuery(conn.id, sql);
+          } else {
+              toast.error("Error opening Object Browser");
+          }
+      } catch {
+          toast.error("Error opening Object Browser");
+      }
   };
 
   const handleSelectTable = (connId: string, tableName: string) => {
@@ -142,7 +180,7 @@ function App() {
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden font-sans">
       <MenuBar 
-        hasActiveTab={tabs.length > 0}
+        hasActiveTab={!!activeTabId}
         hasSelectedConnection={!!selectedConnectionId}
         hasConnections={connections.length > 0}
         onAction={async (action) => {
@@ -169,10 +207,10 @@ function App() {
                   const conn = conns.find(c => c.id === connId);
                   if (conn) {
                       const res = await api.testConnection(conn);
-                      alert(`${conn.name}: ${res.message}`);
+                      toast.info(`${conn.name}: ${res.message}`);
                   }
               } catch {
-                  alert("Error testing connection");
+                  toast.error("Error testing connection");
               }
           }
           if (action === 'edit_connection' && (selectedConnectionId || activeTab?.connectionId)) {
@@ -185,7 +223,7 @@ function App() {
                       setIsModalOpen(true);
                   }
               } catch {
-                  alert("Error loading connection data");
+                  toast.error("Error loading connection data");
               }
           }
           if (action === 'duplicate_connection' && (selectedConnectionId || activeTab?.connectionId)) {
@@ -199,7 +237,7 @@ function App() {
                       setIsModalOpen(true);
                   }
               } catch {
-                  alert("Error duplicating connection");
+                  toast.error("Error duplicating connection");
               }
           }
           if (action === 'delete_connection' && (selectedConnectionId || activeTab?.connectionId)) {
@@ -213,7 +251,7 @@ function App() {
                           setTabs(tabs.filter(t => t.connectionId !== connId));
                       }
                   } catch {
-                      alert("Error deleting connection");
+                      toast.error("Error deleting connection");
                   }
               }
           }
@@ -388,6 +426,8 @@ function App() {
         open={isMonitorOpen} 
         onOpenChange={setIsMonitorOpen} 
       />
+
+      <Toaster theme={theme as 'light' | 'dark'} richColors />
     </div>
   );
 }

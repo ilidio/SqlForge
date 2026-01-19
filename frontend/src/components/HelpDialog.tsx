@@ -1,7 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github } from 'lucide-react';
+import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github, Database, Sparkles, RefreshCw, Activity } from 'lucide-react';
+import { Logo } from './ui/Logo';
 
 interface HelpDialogProps {
     open: boolean;
@@ -61,38 +62,96 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="docs" className="mt-0 space-y-4">
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-bold">Getting Started</h3>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    SqlForge is designed to be a lightweight but powerful database management tool. 
-                                    Connect to your databases via the Sidebar or the <strong>File</strong> menu.
-                                </p>
+                        <TabsContent value="docs" className="mt-0 space-y-6">
+                            <div className="space-y-6 pb-4">
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <Database size={14} className="text-primary" /> Multi-Database Support
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        SqlForge supports a wide range of databases including **PostgreSQL, MySQL, SQLite, SQL Server, Oracle, MongoDB, and Redis**. 
+                                        Use the "New Connection" button to add a local or remote instance.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <Sparkles size={14} className="text-purple-500" /> AI SQL Assistant
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        Powered by **Google Gemini**, the AI Assistant converts natural language into valid SQL. 
+                                        It is schema-aware, meaning it understands your tables and columns to provide accurate queries.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <RefreshCw size={14} className="text-emerald-500" /> Schema & Data Sync
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        The **Sync Wizard** (Pro) uses `sqlglot` to calculate diffs between different database types. 
+                                        You can generate migration plans to sync structures from a development SQLite to a production Postgres seamlessly.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <Activity size={14} className="text-blue-500" /> Monitoring Dashboard
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        Integrated with **Prometheus and Grafana**, SqlForge provides real-time metrics for your database clusters, 
+                                        including CPU usage, memory, and query performance.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <Keyboard size={14} className="text-amber-500" /> Command Palette
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        Press <kbd className="px-1 bg-muted rounded text-[10px]">⌘ K</kbd> to open the Command Palette. 
+                                        From there, you can search for tables, run commands, or switch between connections without touching your mouse.
+                                    </p>
+                                </section>
+
                                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
                                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Pro Tip</h4>
-                                    <p className="text-xs">Use the Command Palette (⌘K) to quickly jump between features without using your mouse.</p>
+                                    <p className="text-xs">Right-click on any table in the Object Browser to quickly generate SELECT statements or open the Data Transfer wizard.</p>
                                 </div>
-                                <Button variant="outline" size="sm" className="w-full gap-2">
-                                    <ExternalLink size={14} /> Open Full Documentation
+
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full gap-2"
+                                    onClick={() => window.open('https://github.com/ilidio/SqlForge', '_blank')}
+                                >
+                                    <ExternalLink size={14} /> View Online Documentation
                                 </Button>
                             </div>
                         </TabsContent>
 
                         <TabsContent value="about" className="mt-0 flex flex-col items-center justify-center py-8 text-center">
-                            <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
-                                <HelpCircle size={40} className="text-primary" />
-                            </div>
-                            <h2 className="text-xl font-bold tracking-tight">SqlForge</h2>
+                            <Logo size={80} className="mb-6" />
                             <p className="text-sm text-muted-foreground mt-1">Version 1.0.0 (Stable)</p>
                             <p className="text-xs text-muted-foreground mt-6 max-w-sm">
                                 A modern, open-source database client inspired by the classics, 
                                 built for speed and AI-native productivity.
                             </p>
                             <div className="flex gap-4 mt-8">
-                                <Button variant="ghost" size="sm" className="gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="gap-2"
+                                    onClick={() => window.open('https://github.com/ilidio/SqlForge', '_blank')}
+                                >
                                     <Github size={14} /> GitHub
                                 </Button>
-                                <Button variant="ghost" size="sm" className="gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="gap-2"
+                                    onClick={() => window.open('https://github.com/ilidio/SqlForge', '_blank')}
+                                >
                                     <ExternalLink size={14} /> Website
                                 </Button>
                             </div>

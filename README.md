@@ -1,5 +1,7 @@
 # SqlForge
 
+[![GitHub](https://img.shields.io/badge/GitHub-SqlForge-blue?logo=github)](https://github.com/ilidio/SqlForge)
+
 SqlForge is a modern, high-performance, cross-database client inspired by tools like Navicat and DataGrip, focused on:
 
 - Fast SQL workflows

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save, Sparkles, Settings as SettingsIcon, Shield, RefreshCw } from 'lucide-react';
 import { api } from '../api';
+import { toast } from 'sonner';
 
 interface SettingsDialogProps {
     open: boolean;
@@ -44,7 +45,7 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
 
     const fetchModels = async () => {
         if (!geminiApiKey) {
-            alert("Please enter an API Key first.");
+            toast.warning("Please enter an API Key first.");
             return;
         }
         setFetchingModels(true);
@@ -52,7 +53,7 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
             const models = await api.getAiModels(geminiApiKey);
             setAvailableModels(models);
         } catch {
-            alert("Failed to fetch models. Check your API key.");
+            toast.error("Failed to fetch models. Check your API key.");
         } finally {
             setFetchingModels(false);
         }
@@ -63,13 +64,13 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
         localStorage.setItem('ai_model', aiModel);
         localStorage.setItem('openai_api_key', openAiApiKey);
         localStorage.setItem('preferred_ai', preferredAi);
-        alert('AI settings saved!');
+        toast.success('AI settings saved!');
     };
 
     const handleSaveGeneral = () => {
         localStorage.setItem('auto_execute', String(autoExecute));
         localStorage.setItem('max_rows', String(maxRows));
-        alert('General settings saved!');
+        toast.success('General settings saved!');
     };
 
     return (

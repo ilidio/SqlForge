@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -87,7 +88,7 @@ export const ResultsTable: React.FC<Props> = ({ data }) => {
               </div>
               <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setChanges({})}>Discard</Button>
-                  <Button variant="default" size="sm" className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={() => alert("Apply Changes: This will generate an UPDATE script in the Pro version.")}>
+                  <Button variant="default" size="sm" className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={() => toast.info("Apply Changes: This will generate an UPDATE script in the Pro version.")}>
                       <Save size={12} /> Apply Changes
                   </Button>
               </div>

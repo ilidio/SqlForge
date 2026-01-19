@@ -1,5 +1,6 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { api } from '../api';
+import { toast } from 'sonner';
 import { ResultsTable } from './ResultsTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ interface Props {
 
 export interface QueryTabHandle {
   formatSql: () => void;
-  runQuery: () => void;
+  executeQuery: () => void;
   toggleAi: (open?: boolean) => void;
 }
 
@@ -75,13 +76,13 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
 
   useImperativeHandle(ref, () => ({
     formatSql,
-    runQuery,
+    executeQuery: runQuery,
     toggleAi
   }));
 
   const generateSQL = async () => {
     if (!apiKey || !aiModel) {
-      alert("Please configure both Gemini API Key and AI Model in Settings first.");
+      toast.warning("Please configure both Gemini API Key and AI Model in Settings first.");
       return;
     }
     setAiLoading(true);
@@ -95,7 +96,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
       }
     } catch (e: unknown) {
       const message = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (e as Error).message || String(e);
-      alert("AI Error: " + message);
+      toast.error("AI Error: " + message);
     } finally {
       setAiLoading(false);
     }
