@@ -12,16 +12,26 @@ It is designed for backend engineers, data engineers, and DBAs who want speed, p
 
 ---
 
+## 🚀 Recent Updates
+
+- **Modern SVG Logo:** High-resolution branding integrated across the UI, featuring a stylized database cylinder being forged on an anvil with an AI pulsing spark.
+- **Production-Grade Schema Sync:** Implemented a robust diffing engine using `sqlglot` for cross-dialect synchronization (e.g., SQLite to Postgres).
+- **StateManager Module:** New structured state management for persisting and restoring application snapshots.
+- **Monitoring Dashboard:** Integrated Prometheus and Grafana for professional-grade database and system monitoring.
+- **Refined Data Editor:** spreadsheet-style grid with inline editing, batch updates, and keyboard navigation.
+- **Consolidated Scripts:** All management tools are now unified in the root `/scripts` directory.
+
+---
+
 ## Key Features
 
 - **Multi-database Support:** Postgres, MySQL, SQLite, SQL Server, Oracle, MongoDB, Redis.
 - **AI SQL Assistant:** Schema-aware query generation powered by Google Gemini.
-- **Advanced Object Browser:** Grouped views for Tables, Views, Functions, and Triggers.
+- **Advanced Object Browser:** Grouped views for Tables, Views, Functions, Triggers, and Collections.
 - **Command Palette:** (⌘K / Ctrl+K) for lightning-fast navigation.
-- **Data Editing:** Spreadsheet-style grid with inline editing (Pro).
-- **Schema & Data Sync:** Efficient synchronization using `pysqlsync` (Pro).
-- **Import/Export:** Support for CSV, JSON, and SQL Inserts.
-- **Dark/Light Themes:** Modern OKLCH-based theme engine.
+- **Backup & Restore:** Easy wizards for managing database snapshots.
+- **Import/Export:** Support for CSV, JSON, and transpiled SQL Inserts.
+- **Dark/Light Themes:** Modern OKLCH-based theme engine with Radix UI components.
 
 ---
 
@@ -29,9 +39,9 @@ It is designed for backend engineers, data engineers, and DBAs who want speed, p
 
 ```
 SqlForge/
-├── backend/        # FastAPI engine & DB drivers
-├── frontend/       # React 19 + Tailwind 4 UI
-├── scripts/        # Management & automation scripts
+├── backend/        # FastAPI engine, DB drivers & Pro logic (Sync, Backup, State)
+├── frontend/       # React 19 + Tailwind 4 + Lucide UI
+├── scripts/        # Centralized management & automation scripts
 ├── tests/          # Docker DB suite & test cases
 ├── ARCHITECTURE.md # System design & sync logic
 ├── USER_STORIES.md # Product requirements
@@ -47,9 +57,12 @@ SqlForge/
 ./setup.sh
 ```
 
-### 2. Start Test Databases
+### 2. Manage Databases
 ```bash
-./scripts/start_dbs.sh
+./scripts/start_dbs.sh   # Start Docker containers
+./scripts/stop_dbs.sh    # Stop Docker containers
+./scripts/clean_dbs.sh   # Wipe Docker containers and volumes
+./scripts/remove_local_dbs.sh # Wipe local SQLite and metadata files
 ```
 
 ### 3. Run Application
