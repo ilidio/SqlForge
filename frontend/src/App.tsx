@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { QueryTab, type QueryTabHandle } from './components/QueryTab';
 import { ObjectBrowserTab } from './components/ObjectBrowserTab';
 import { ConnectionModal } from './components/ConnectionModal';
+import { Logo } from './components/ui/Logo';
 import { MenuBar } from './components/MenuBar';
 import { CommandPalette } from './components/CommandPalette';
 import SettingsDialog from './components/SettingsDialog';
@@ -326,10 +327,7 @@ function App() {
               </>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in duration-500">
-                <div className="w-24 h-24 bg-primary/5 rounded-3xl flex items-center justify-center mb-6 shadow-inner border border-primary/10">
-                    <Database size={48} className="text-primary/20" />
-                </div>
-                <div className="text-5xl font-black mb-2 opacity-20 tracking-tighter text-foreground uppercase">SqlForge</div>
+                <Logo size={120} className="mb-8" />
                 <p className="text-sm font-medium opacity-60">Select a connection or create a new one to get started.</p>
                 <div className="mt-10 flex gap-3">
                     <button 

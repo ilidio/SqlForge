@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { Logo } from './ui/Logo';
 import { 
   Database, Settings, Plus, FolderOpen, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X
 } from 'lucide-react';
@@ -92,8 +93,8 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
     return (
         <div className="h-8 bg-muted/50 border-b border-border flex items-center px-2 select-none z-50">
             <div className="flex items-center gap-1">
-                <div className="flex items-center gap-2 px-2 mr-4">
-                    <Database size={16} className="text-primary" />
+                <div className="flex items-center gap-1.5 px-2 mr-4">
+                    <Logo size={18} variant="icon" />
                     <span className="text-[11px] font-bold tracking-tighter uppercase">SqlForge</span>
                 </div>
                 

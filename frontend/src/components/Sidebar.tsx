@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api, type ConnectionConfig } from '../api';
 import { Database, Table, Plus, RefreshCw, History, Clock, ChevronRight, ChevronDown, Layers, FileText, Key, Box, Search, Settings, Zap, Cpu, Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Logo } from './ui/Logo';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -290,7 +291,10 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
               >
                   {theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
               </Button>
-              <span className="font-medium">SqlForge v1.0</span>
+              <div className="flex items-center gap-1.5 opacity-80">
+                  <Logo size={14} variant="icon" />
+                  <span className="font-bold tracking-tight">SqlForge</span>
+              </div>
           </div>
           <Button 
             variant="ghost" 
