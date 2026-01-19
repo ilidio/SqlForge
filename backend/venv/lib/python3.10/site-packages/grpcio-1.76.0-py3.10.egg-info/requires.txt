@@ -1,0 +1,4 @@
+typing-extensions~=4.12
+
+[protobuf]
+grpcio-tools>=1.76.0

@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: sqlforge-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mysql:
+    image: mysql:latest
+    container_name: sqlforge-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  oracle:
+    image: gvenzl/oracle-free:latest
+    container_name: sqlforge-oracle
+    environment:
+      ORACLE_PASSWORD: password
+      APP_USER: admin
+      APP_USER_PASSWORD: password
+    ports:
+      - "1521:1521"
+    volumes:
+      - ./oracle/init.sql:/container-entrypoint-initdb.d/init.sql
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlforge-mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Password123!"
+    ports:
+      - "1433:1433"
+    # Note: MSSQL requires a custom entrypoint or manual run for init scripts, 
+    # but for simple testing SA login works.
+
+  mongodb:
+    image: mongo:latest
+    container_name: sqlforge-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: testdb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongodb/init.js:/docker-entrypoint-initdb.d/init.js:ro
+
+  redis:
+    image: redis:latest
+    container_name: sqlforge-redis
+    ports:
+      - "6379:6379"
+    # Redis doesn't need init scripts, we can just push keys via API

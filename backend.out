@@ -1,0 +1,70 @@
+INFO:     Will watch for changes in these directories: ['/Users/ilidiomartins/src/SqlForge/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [74493] using WatchFiles
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [74495]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:58785 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60865 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60865 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60865 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60867 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60867 - "GET /connections/1989a28a-86e8-461b-9e07-14cb183291c9/tables HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [74495]
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [89433]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:61016 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61016 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61016 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61018 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61018 - "GET /connections/discover HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61038 - "OPTIONS /connections/test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61038 - "POST /connections/test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61038 - "OPTIONS /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61038 - "POST /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61038 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61038 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61042 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "OPTIONS /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61054 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61099 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61099 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61129 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61178 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61178 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61181 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61181 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61181 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61270 - "GET /connections/1989a28a-86e8-461b-9e07-14cb183291c9/tables HTTP/1.1" 200 OK

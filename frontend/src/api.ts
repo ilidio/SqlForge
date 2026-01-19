@@ -1,0 +1,27 @@
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8000';
+
+export interface ConnectionConfig {
+  id?: string;
+  name: string;
+  type: 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | 'oracle' | 'redis' | 'mongodb';
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  database: string;
+  filepath?: string;
+}
+
+export const api = {
+  getConnections: () => axios.get<ConnectionConfig[]>(`${API_URL}/connections`).then(r => r.data),
+  saveConnection: (config: ConnectionConfig) => axios.post<ConnectionConfig>(`${API_URL}/connections`, config).then(r => r.data),
+  deleteConnection: (connId: string) => axios.delete(`${API_URL}/connections/${connId}`).then(r => r.data),
+  discoverConnections: () => axios.get<Partial<ConnectionConfig>[]>(`${API_URL}/connections/discover`).then(r => r.data),
+  testConnection: (config: ConnectionConfig) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/test`, config).then(r => r.data),
+  getTables: (connId: string) => axios.get<{name: string, type: string}[]>(`${API_URL}/connections/${connId}/tables`).then(r => r.data),
+  runQuery: (connId: string, sql: string) => axios.post<{columns: string[], rows: Record<string, unknown>[], error: string | null}>(`${API_URL}/query`, { connection_id: connId, sql }).then(r => r.data),
+  getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),
+  generateSQL: (connId: string, prompt: string, apiKey: string) => axios.post<{sql: string}>(`${API_URL}/ai/generate`, { connection_id: connId, prompt, api_key: apiKey }).then(r => r.data)
+};

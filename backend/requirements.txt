@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+aiosqlite
+typing-extensions
+python-multipart
+pytest
+httpx
+google-generativeai
+psycopg2-binary
+pymysql
+pymssql
+oracledb
+redis
+pymongo
