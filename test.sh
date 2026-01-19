@@ -24,6 +24,7 @@ cd ..
 echo ""
 echo "--- Cleaning Up ---"
 ./scripts/stop_dbs.sh
+./scripts/remove_local_dbs.sh
 
 echo ""
-echo "All tests completed."
+echo "All tests completed and environment cleaned."
