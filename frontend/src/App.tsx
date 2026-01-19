@@ -213,7 +213,7 @@ function App() {
                   toast.error("Error testing connection");
               }
           }
-          if (action === 'edit_connection' && (selectedConnectionId || activeTab?.connectionId)) {
+          if ((action === 'edit_connection' || action === 'connection_properties') && (selectedConnectionId || activeTab?.connectionId)) {
               const connId = activeTab?.connectionId || selectedConnectionId;
               try {
                   const conns = await api.getConnections();
