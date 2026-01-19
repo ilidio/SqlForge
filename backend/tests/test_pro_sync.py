@@ -8,9 +8,11 @@ def test_get_dialect():
     assert get_dialect("sqlite") == "sqlite"
     assert get_dialect("unknown") == "sqlite"
 
-def test_diff_schemas_identical():
-    source = ConnectionConfig(name="Source", type="sqlite", database="s.db", filepath="s.db")
-    target = ConnectionConfig(name="Target", type="sqlite", database="t.db", filepath="t.db")
+def test_diff_schemas_identical(tmp_path):
+    s_path = str(tmp_path / "s.db")
+    t_path = str(tmp_path / "t.db")
+    source = ConnectionConfig(name="Source", type="sqlite", database="s.db", filepath=s_path)
+    target = ConnectionConfig(name="Target", type="sqlite", database="t.db", filepath=t_path)
     
     # This might fail if get_engine fails because files don't exist, 
     # but we want to test the logic. In a unit test we might mock get_engine.
