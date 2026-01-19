@@ -1,6 +1,14 @@
 #!/bin/bash
-echo "Running backend tests..."
+echo "--- Running Backend Tests ---"
 cd backend
-source venv/bin/activate
-PYTHONPATH=. pytest tests/
-echo "Tests completed."
+PYTHONPATH=. venv/bin/python -m pytest tests/
+cd ..
+
+echo ""
+echo "--- Running Frontend Tests ---"
+cd frontend
+npm test
+cd ..
+
+echo ""
+echo "All tests completed."
