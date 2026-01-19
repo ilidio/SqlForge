@@ -62,4 +62,42 @@ services:
     container_name: sqlforge-redis
     ports:
       - "6379:6379"
-    # Redis doesn't need init scripts, we can just push keys via API
+
+  # --- PRO MONITORING STACK ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sqlforge-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sqlforge-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: sqlforge-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://admin:password@postgres:5432/testdb?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: sqlforge-mysql-exporter
+    environment:
+      DATA_SOURCE_NAME: "admin:password@(mysql:3306)/"
+    ports:
+      - "9104:9104"
+    depends_on:
+      - mysql

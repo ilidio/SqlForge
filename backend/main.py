@@ -105,6 +105,22 @@ def run_query(query: QueryRequest):
 def get_history_endpoint():
     return internal_db.get_history()
 
+@app.get("/ai/models")
+def list_ai_models(api_key: str):
+    try:
+        genai.configure(api_key=api_key)
+        models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                models.append({
+                    "name": m.name.replace('models/', ''),
+                    "display_name": m.display_name,
+                    "description": m.description
+                })
+        return models
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/ai/generate")
 def generate_sql(request: AIRequest):
     config = internal_db.get_connection(request.connection_id)

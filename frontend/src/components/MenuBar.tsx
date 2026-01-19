@@ -18,9 +18,10 @@ interface MenuProps {
     onAction?: (action: string) => void;
     hasActiveTab?: boolean;
     hasSelectedConnection?: boolean;
+    hasConnections?: boolean;
 }
 
-export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelectedConnection }) => {
+export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelectedConnection, hasConnections }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
 
     const menus: Record<string, MenuItem[]> = {
@@ -28,11 +29,12 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
             { label: 'New Connection...', icon: <Plus size={14}/>, shortcut: 'Ctrl+N', onClick: () => onAction?.('new_connection') },
             { label: 'Open Connection...', icon: <FolderOpen size={14}/> },
             { divider: true },
-            { label: 'New Query', icon: <Terminal size={14}/>, shortcut: 'Ctrl+Q', onClick: () => onAction?.('new_query'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'New Query', icon: <Terminal size={14}/>, shortcut: 'Ctrl+Q', onClick: () => onAction?.('new_query'), disabled: !hasConnections && !hasActiveTab },
             { label: 'Save Query', icon: <Save size={14}/>, shortcut: 'Ctrl+S', disabled: !hasActiveTab },
             { divider: true },
             { label: 'Settings', icon: <Settings size={14}/>, shortcut: 'Ctrl+,', onClick: () => onAction?.('open_settings') },
-            { label: 'Exit', shortcut: 'Alt+F4' },
+            { divider: true },
+            { label: 'Close Tab', shortcut: 'Ctrl+W', onClick: () => onAction?.('close_tab'), disabled: !hasActiveTab },
         ],
         Edit: [
             { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => onAction?.('undo'), disabled: !hasActiveTab },
@@ -41,7 +43,8 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
             { label: 'Format SQL', icon: <Zap size={14}/>, shortcut: 'Ctrl+Shift+F', onClick: () => onAction?.('format_sql'), disabled: !hasActiveTab },
         ],
         View: [
-            { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('toggle_sidebar') },
+            { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('open_browser'), disabled: !hasConnections },
+            { label: 'Toggle Sidebar', onClick: () => onAction?.('toggle_sidebar') },
             { label: 'Query Editor', shortcut: 'F9', onClick: () => onAction?.('focus_editor'), disabled: !hasActiveTab },
             { label: 'Result Grid', shortcut: 'F10', onClick: () => onAction?.('focus_results'), disabled: !hasActiveTab },
             { divider: true },
@@ -49,10 +52,10 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
             { label: 'Toggle Dark Mode', onClick: () => onAction?.('toggle_theme') },
         ],
         Connection: [
-            { label: 'Connect', icon: <Zap size={14} className="text-emerald-500"/>, onClick: () => onAction?.('connect'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'Connect', icon: <Zap size={14} className="text-emerald-500"/>, onClick: () => onAction?.('connect'), disabled: !hasConnections && !hasActiveTab },
             { label: 'Disconnect', icon: <X size={14} className="text-destructive"/>, onClick: () => onAction?.('disconnect'), disabled: !hasSelectedConnection && !hasActiveTab },
             { label: 'Reconnect', onClick: () => onAction?.('reconnect'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Test Connection', onClick: () => onAction?.('test_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'Test Connection', onClick: () => onAction?.('test_connection'), disabled: !hasConnections && !hasActiveTab },
             { divider: true },
             { label: 'Edit Connection...', icon: <Edit2 size={14}/>, onClick: () => onAction?.('edit_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
             { label: 'Duplicate Connection', onClick: () => onAction?.('duplicate_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
@@ -62,15 +65,15 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
             { label: 'Properties', icon: <Settings size={14}/>, onClick: () => onAction?.('connection_properties'), disabled: !hasSelectedConnection && !hasActiveTab },
         ],
         Tools: [
-            { label: 'Data Transfer...', icon: <Database size={14}/>, onClick: () => onAction?.('data_transfer'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Data Synchronization...', onClick: () => onAction?.('data_sync'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Structure Synchronization...', onClick: () => onAction?.('struct_sync'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'Data Transfer...', icon: <Database size={14}/>, onClick: () => onAction?.('data_transfer'), disabled: !hasConnections },
+            { label: 'Data Synchronization...', onClick: () => onAction?.('data_sync'), disabled: !hasConnections },
+            { label: 'Structure Synchronization...', onClick: () => onAction?.('struct_sync'), disabled: !hasConnections },
             { divider: true },
-            { label: 'Backup...', icon: <Save size={14}/>, onClick: () => onAction?.('backup'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Restore...', onClick: () => onAction?.('restore'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'Backup...', icon: <Save size={14}/>, onClick: () => onAction?.('backup'), disabled: !hasConnections },
+            { label: 'Restore...', onClick: () => onAction?.('restore'), disabled: !hasConnections },
             { divider: true },
             { label: 'AI Assistant', icon: <Sparkles size={14} className="text-purple-500"/>, onClick: () => onAction?.('ai_copilot'), disabled: !hasActiveTab },
-            { label: 'Server Monitor', icon: <Cpu size={14}/>, onClick: () => onAction?.('monitor'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'Server Monitor', icon: <Cpu size={14}/>, onClick: () => onAction?.('monitor'), disabled: !hasConnections },
         ],
         Help: [
             { label: 'Documentation', icon: <HelpCircle size={14}/>, onClick: () => onAction?.('open_docs') },

@@ -1,19 +1,38 @@
-# User Stories
+# SqlForge — User Stories
+
+## Personas
+- **Backend Engineer:** Needs fast query execution and formatting.
+- **DBA:** Needs schema synchronization and backup tools.
+- **Data Analyst:** Needs easy export and AI-assisted data retrieval.
+
+---
 
 ## Connections
-- As a user, I want to create a new database connection so that I can manage my data.
-- As a user, I want to test a connection before saving it to ensure the credentials are correct.
-- As a user, I want to see a list of my saved connections in a sidebar for easy access.
+- **US-001:** Create/Edit/Delete database connections.
+- **US-002:** Auto-discover local databases via port scanning.
+- **US-003:** Secure connection via SSH tunnels.
 
-## Exploration
-- As a user, I want to expand a connection to see its tables and views.
-- As a user, I want to double-click a table to quickly view its data (SELECT *).
+## SQL Editing
+- **US-010:** Syntax highlighting and intelligent autocomplete.
+- **US-011:** AI SQL Copilot (Natural Language to SQL).
+- **US-012:** SQL Formatting (standardizing keywords).
+- **US-013:** Query execution history.
 
-## Querying
-- As a user, I want to write custom SQL queries in an editor with syntax highlighting.
-- As a user, I want to execute my query and see the results in a grid.
-- As a user, I want to see error messages if my SQL query is invalid.
+## Data Editing (Pro)
+- **US-020:** Inline editing of table results in the grid.
+- **US-021:** Batch update/delete with SQL preview.
+- **US-022:** Copy/Paste compatibility with Excel/Google Sheets.
 
-## Data Management
-- As a user, I want to see the column names in the result grid.
-- As a user, I want the UI to be responsive and work well in dark mode.
+## Import / Export
+- **US-030:** Export query results to CSV, JSON, and SQL Inserts.
+- **US-031:** Import datasets from CSV/JSON into existing tables.
+
+## Synchronization (Pro)
+- **US-050:** Compare schemas between two databases.
+- **US-051:** Synchronize data between production and staging environments.
+- **US-052:** Generate safe migration scripts.
+
+## UX & Productivity
+- **US-090:** Command Palette (⌘K) for keyboard-driven workflows.
+- **US-091:** Multi-tab interface for simultaneous task management.
+- **US-092:** Dark/Light theme switching.

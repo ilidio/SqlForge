@@ -1,101 +1,78 @@
-# SqlForge: The Professional Database Workbench 🛠️⚡
+# SqlForge
 
-**SqlForge** is a high-performance, professional-grade database management tool inspired by the power of Navicat and built with a modern, AI-native architecture. It combines a sophisticated **FastAPI** backend with a polished **React/TypeScript** frontend styled with **Tailwind CSS 4** and **OKLCH** colors for a premium, high-contrast visual experience.
+SqlForge is a modern, high-performance, cross-database client inspired by tools like Navicat and DataGrip, focused on:
 
----
+- Fast SQL workflows
+- Clean, keyboard-first UX
+- Built-in AI assistant
+- Schema and data synchronization
+- Developer-first architecture
 
-## 🔥 Key Features
-
-### 1. Multi-Engine Mastery (SQL & NoSQL)
-Seamlessly manage diverse environments within a single interface:
-*   **Relational:** PostgreSQL, MySQL, SQLite, Oracle, and SQL Server (MSSQL).
-*   **NoSQL & Key-Value:** MongoDB and Redis support.
-
-### 2. AI-Powered SQL Copilot 🧠
-Transform natural language into production-ready SQL queries using the integrated **Google Gemini AI**. Just describe what you need (e.g., *"Show me total revenue per month for 2024"*), and SqlForge handles the schema-aware generation.
-
-### 3. Professional Navicat-Style UX
-*   **Hierarchical Menu System:** A full desktop-class menu bar for deep feature access.
-*   **Command Palette (⌘K):** A lightning-fast interface for power users to jump between connections, features, and settings.
-*   **Advanced Object Browser:** Deep introspection of Tables, Views, Triggers, Functions, and Procedures.
-*   **Multi-Tabbed Interface:** Manage multiple queries and data views in a unified, dockable workspace.
-
-### 4. Developer-First Tools
-*   **Auto-Discovery:** One-click "Magic Wand" scanning of `localhost` to detect and pre-configure active database services.
-*   **SQL Formatter:** Integrated professional formatting to keep your queries clean and readable.
-*   **Theme Engine:** Beautifully crafted Dark and Light modes using modern OKLCH color spaces.
+It is designed for backend engineers, data engineers, and DBAs who want speed, power, and clarity without bloat.
 
 ---
 
-## 🛠️ Setup & Installation
+## Key Features
 
-### Prerequisites
-- **Python 3.10+**
-- **Node.js 18+**
-- **Docker & Docker Compose** (for testing environments)
+- **Multi-database Support:** Postgres, MySQL, SQLite, SQL Server, Oracle, MongoDB, Redis.
+- **AI SQL Assistant:** Schema-aware query generation powered by Google Gemini.
+- **Advanced Object Browser:** Grouped views for Tables, Views, Functions, and Triggers.
+- **Command Palette:** (⌘K / Ctrl+K) for lightning-fast navigation.
+- **Data Editing:** Spreadsheet-style grid with inline editing (Pro).
+- **Schema & Data Sync:** Efficient synchronization using `pysqlsync` (Pro).
+- **Import/Export:** Support for CSV, JSON, and SQL Inserts.
+- **Dark/Light Themes:** Modern OKLCH-based theme engine.
 
-### Quick Start
-Run the automated setup script to initialize the backend virtual environment and install all dependencies:
+---
 
+## Project Structure
+
+```
+SqlForge/
+├── backend/        # FastAPI engine & DB drivers
+├── frontend/       # React 19 + Tailwind 4 UI
+├── scripts/        # Management & automation scripts
+├── tests/          # Docker DB suite & test cases
+├── ARCHITECTURE.md # System design & sync logic
+├── USER_STORIES.md # Product requirements
+└── README.md       # This file
+```
+
+---
+
+## Quick Start
+
+### 1. Setup
 ```bash
 ./setup.sh
 ```
 
----
+### 2. Start Test Databases
+```bash
+./scripts/start_dbs.sh
+```
 
-## 🏃 Running the Application
-
-SqlForge requires both the backend and frontend to be running simultaneously.
-
-### 1. Start the Backend (API)
+### 3. Run Application
+In separate terminals:
 ```bash
 ./run_backend.sh
-```
-
-### 2. Start the Frontend (UI)
-```bash
 ./run_frontend.sh
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🧪 Testing & Development Environment
+## Philosophy
 
-SqlForge includes a complete Docker-based suite of pre-populated databases for testing and development.
-
-### 🐳 Managing Test Databases
-```bash
-# Start all databases (Postgres, MySQL, Oracle, MSSQL, MongoDB, Redis)
-./scripts/start_dbs.sh
-
-# Stop all databases
-./scripts/stop_dbs.sh
-
-# Full Cleanup: Stop databases and remove all images/volumes
-./scripts/clean_dbs.sh
-```
-
-### 📡 Connection Details (Docker Suite)
-| Database | Host | Port | User | Password | Database |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **PostgreSQL** | `localhost` | `5432` | `admin` | `password` | `testdb` |
-| **MySQL** | `localhost` | `3306` | `admin` | `password` | `testdb` |
-| **MongoDB** | `localhost` | `27017` | - | - | `testdb` |
-| **Redis** | `localhost` | `6379` | - | - | - |
-| **SQL Server** | `localhost` | `1433` | `sa` | `Password123!` | `TestDB` |
-| **Oracle** | `localhost` | `1521` | `admin` | `password` | `FREE` |
+SqlForge is built around these principles:
+* SQL-first, not ORM-first
+* Keyboard over mouse
+* Preview before mutate
+* Async everywhere
+* No blocking UI
+* Safe by default
 
 ---
 
-## 📂 Project Structure
-
-- `backend/`: FastAPI application, SQLAlchemy logic, and database drivers.
-- `frontend/`: React 19 + Vite application with Tailwind CSS 4 and Radix UI.
-- `scripts/`: Utility scripts for database management and deployment.
-- `tests/`: Docker configurations and automated test suites.
-
----
-
-## 📜 License
-MIT
+## Status
+🚧 Active development
+🎯 Target: Navicat-level power with modern UX and AI-native workflows

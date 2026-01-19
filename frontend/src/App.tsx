@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { QueryTab, type QueryTabHandle } from './components/QueryTab';
+import { ObjectBrowserTab } from './components/ObjectBrowserTab';
 import { ConnectionModal } from './components/ConnectionModal';
 import { MenuBar } from './components/MenuBar';
 import { CommandPalette } from './components/CommandPalette';
 import SettingsDialog from './components/SettingsDialog';
 import HelpDialog from './components/HelpDialog';
+import SyncWizard from './components/SyncWizard';
+import BackupWizard from './components/BackupWizard';
+import MonitorDashboard from './components/MonitorDashboard';
 import { api, type ConnectionConfig } from './api';
 import { useTheme } from './lib/ThemeContext';
 import { X, Database, Plus } from 'lucide-react';
@@ -14,7 +18,7 @@ import { cn } from '@/lib/utils';
 interface Tab {
   id: string;
   title: string;
-  type: 'query' | 'table';
+  type: 'query' | 'table' | 'browser';
   connectionId: string;
   content?: string; // For query: sql; For table: tableName
 }
@@ -24,15 +28,30 @@ function App() {
   const activeQueryTabRef = React.useRef<QueryTabHandle>(null);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [connections, setConnections] = useState<ConnectionConfig[]>([]);
+  const [loadingConnections, setLoadingConnections] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isSyncOpen, setIsSyncOpen] = useState(false);
+  const [syncMode, setSyncMode] = useState<'structure' | 'data' | 'transfer'>('structure');
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
+  const [backupMode, setBackupMode] = useState<'backup' | 'restore'>('backup');
+  const [isMonitorOpen, setIsMonitorOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [helpTab, setHelpTab] = useState('shortcuts');
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [editingConnection, setEditingConnection] = useState<ConnectionConfig | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    setLoadingConnections(true);
+    api.getConnections().then(conns => {
+        setConnections(conns);
+        setLoadingConnections(false);
+    });
+  }, [refreshTrigger]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,6 +88,30 @@ function App() {
     setActiveTabId(newTab.id);
   };
 
+  const handleOpenBrowser = async (connId: string) => {
+    // Check if browser for this connection is already open
+    const existing = tabs.find(t => t.type === 'browser' && t.connectionId === connId);
+    if (existing) {
+        setActiveTabId(existing.id);
+        return;
+    }
+
+    try {
+        const conns = await api.getConnections();
+        const conn = conns.find(c => c.id === connId);
+        const newTab: Tab = {
+            id: Math.random().toString(36).substring(7),
+            title: conn?.name || 'Object Browser',
+            type: 'browser',
+            connectionId: connId
+        };
+        setTabs([...tabs, newTab]);
+        setActiveTabId(newTab.id);
+    } catch {
+        alert("Error opening Object Browser");
+    }
+  };
+
   const handleSelectTable = (connId: string, tableName: string) => {
     const maxRows = localStorage.getItem('max_rows') || '100';
     const newTab: Tab = {
@@ -82,8 +125,8 @@ function App() {
     setActiveTabId(newTab.id);
   };
 
-  const closeTab = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const closeTab = (id: string, e?: React.MouseEvent | { stopPropagation: () => void }) => {
+    e?.stopPropagation();
     const newTabs = tabs.filter(t => t.id !== id);
     setTabs(newTabs);
     if (activeTabId === id && newTabs.length > 0) {
@@ -98,8 +141,9 @@ function App() {
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden font-sans">
       <MenuBar 
-        hasActiveTab={!!activeTab}
+        hasActiveTab={tabs.length > 0}
         hasSelectedConnection={!!selectedConnectionId}
+        hasConnections={connections.length > 0}
         onAction={async (action) => {
           if (action === 'new_query' && (activeTab || selectedConnectionId)) {
               handleOpenQuery(activeTab?.connectionId || selectedConnectionId!);
@@ -113,6 +157,10 @@ function App() {
           if (action === 'open_shortcuts') { setHelpTab('shortcuts'); setIsHelpOpen(true); }
           if (action === 'open_about') { setHelpTab('about'); setIsHelpOpen(true); }
           
+          if (action === 'close_tab' && activeTabId) {
+              closeTab(activeTabId);
+          }
+
           if (action === 'test_connection' && (selectedConnectionId || activeTab?.connectionId)) {
               const connId = activeTab?.connectionId || selectedConnectionId;
               try {
@@ -173,6 +221,9 @@ function App() {
           }
 
           if (action === 'toggle_sidebar') setIsSidebarVisible(prev => !prev);
+          if (action === 'open_browser' && (selectedConnectionId || activeTab?.connectionId)) {
+              handleOpenBrowser(activeTab?.connectionId || selectedConnectionId!);
+          }
           if (action === 'toggle_theme') setTheme(theme === 'dark' ? 'light' : 'dark');
           if (action === 'toggle_fullscreen') {
               if (!document.fullscreenElement) {
@@ -193,19 +244,29 @@ function App() {
                   setIsSettingsOpen(true); // Direct to AI settings if no tab
               }
           }
-          if (['data_transfer', 'data_sync', 'struct_sync', 'backup', 'restore', 'monitor'].includes(action)) {
-              alert(`${action.replace('_', ' ').toUpperCase()}: This module is part of the Pro Roadmap and is coming soon!`);
-          }
+
+          if (action === 'data_transfer') { setSyncMode('transfer'); setIsSyncOpen(true); }
+          if (action === 'data_sync') { setSyncMode('data'); setIsSyncOpen(true); }
+          if (action === 'struct_sync') { setSyncMode('structure'); setIsSyncOpen(true); }
+
+          if (action === 'backup') { setBackupMode('backup'); setIsBackupOpen(true); }
+          if (action === 'restore') { setBackupMode('restore'); setIsBackupOpen(true); }
+          if (action === 'monitor') setIsMonitorOpen(true);
       }} />
       <div className="flex-1 flex overflow-hidden">
         {isSidebarVisible && (
           <Sidebar 
             key={refreshTrigger}
+            connections={connections}
+            loading={loadingConnections}
+            selectedConnectionId={selectedConnectionId}
             onSelectTable={handleSelectTable} 
             onOpenQuery={handleOpenQuery}
+            onOpenBrowser={handleOpenBrowser}
             onNewConnection={() => setIsModalOpen(true)}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectConnection={setSelectedConnectionId}
+            onRefresh={() => setRefreshTrigger(prev => prev + 1)}
           />
         )}
         
@@ -245,19 +306,37 @@ function App() {
           {/* Tab Content */}
           <div className="flex-1 overflow-hidden relative">
             {activeTab ? (
-              <QueryTab 
-                key={activeTab.id}
-                ref={activeQueryTabRef}
-                connectionId={activeTab.connectionId} 
-                initialSql={activeTab.content} 
-              />
+              <>
+                {activeTab.type === 'query' && (
+                  <QueryTab 
+                    key={activeTab.id}
+                    ref={activeQueryTabRef}
+                    connectionId={activeTab.connectionId} 
+                    initialSql={activeTab.content} 
+                  />
+                )}
+                {activeTab.type === 'browser' && (
+                  <ObjectBrowserTab 
+                    key={activeTab.id}
+                    connectionId={activeTab.connectionId}
+                    onOpenTable={(tableName) => handleSelectTable(activeTab.connectionId, tableName)}
+                    onOpenQuery={() => handleOpenQuery(activeTab.connectionId)}
+                  />
+                )}
+              </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <div className="text-4xl font-bold mb-4 opacity-10 tracking-tight">SqlForge</div>
-                <p className="text-sm">Select a connection or create a new one to get started.</p>
-                <div className="mt-8 flex gap-3">
-                    <button className="px-4 py-2 border rounded hover:bg-muted flex items-center" onClick={() => setIsModalOpen(true)}>
-                        <Plus size={14} className="mr-2" /> New Connection
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in duration-500">
+                <div className="w-24 h-24 bg-primary/5 rounded-3xl flex items-center justify-center mb-6 shadow-inner border border-primary/10">
+                    <Database size={48} className="text-primary/20" />
+                </div>
+                <div className="text-5xl font-black mb-2 opacity-20 tracking-tighter text-foreground uppercase">SqlForge</div>
+                <p className="text-sm font-medium opacity-60">Select a connection or create a new one to get started.</p>
+                <div className="mt-10 flex gap-3">
+                    <button 
+                        className="px-6 py-2.5 bg-primary text-primary-foreground font-bold rounded-lg shadow-lg shadow-primary/20 hover:brightness-110 transition-all flex items-center gap-2" 
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        <Plus size={18} /> New Connection
                     </button>
                 </div>
               </div>
@@ -293,6 +372,23 @@ function App() {
         open={isHelpOpen} 
         onOpenChange={setIsHelpOpen} 
         initialTab={helpTab}
+      />
+
+      <SyncWizard 
+        open={isSyncOpen} 
+        onOpenChange={setIsSyncOpen} 
+        mode={syncMode}
+      />
+
+      <BackupWizard 
+        open={isBackupOpen} 
+        onOpenChange={setIsBackupOpen} 
+        mode={backupMode}
+      />
+
+      <MonitorDashboard 
+        open={isMonitorOpen} 
+        onOpenChange={setIsMonitorOpen} 
       />
     </div>
   );

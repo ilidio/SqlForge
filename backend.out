@@ -68,3 +68,245 @@ INFO:     127.0.0.1:61181 - "GET /connections HTTP/1.1" 200 OK
 INFO:     127.0.0.1:61181 - "GET /connections HTTP/1.1" 200 OK
 INFO:     127.0.0.1:61181 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
 INFO:     127.0.0.1:61270 - "GET /connections/1989a28a-86e8-461b-9e07-14cb183291c9/tables HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'venv/lib/python3.10/site-packages/referencing/tests/test_exceptions.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_exceptions.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/model/properties.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/singlestore.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/object_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/jsonpath.py', 'venv/lib/python3.10/site-packages/referencing/tests/test_referencing_suite.py', 'venv/lib/python3.10/site-packages/jsonschema/__init__.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/json_schema_test_suite.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/merge_subqueries.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/data_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/object_types.py', 'venv/lib/python3.10/site-packages/sqlglot/expressions.py', 'venv/lib/python3.10/site-packages/sqlglot/parser.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/trino/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/normalize_identifiers.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/optimize_joins.py', 'venv/lib/python3.10/site-packages/strong_typing/serialization.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/data_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/bigquery.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/oracle.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/__init__.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/subcomponents.py', 'venv/lib/python3.10/site-packages/strong_typing/exception.py', 'venv/lib/python3.10/site-packages/jsonschema/protocols.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/redshift/engine.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/spark2.py', 'venv/lib/python3.10/site-packages/pysqlsync/python_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/snowflake/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/bigquery.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/generator.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/risingwave.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/qualify_columns.py', 'venv/lib/python3.10/site-packages/sqlglot/serde.py', 'venv/lib/python3.10/site-packages/sqlglot/executor/env.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/fuzz_validate.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/snowflake/object_types.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/snowflake.py', 'venv/lib/python3.10/site-packages/pysqlsync/connection.py', 'venv/lib/python3.10/site-packages/sqlglot/executor/table.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/tableau.py', 'venv/lib/python3.10/site-packages/attrs/setters.py', 'venv/lib/python3.10/site-packages/referencing/tests/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/snowflake.py', 'venv/lib/python3.10/site-packages/attr/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/snowflake/data_types.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/isolate_table_selects.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/issue232.py', 'venv/lib/python3.10/site-packages/truststore/_openssl.py', 'venv/lib/python3.10/site-packages/referencing/tests/test_jsonschema.py', 'venv/lib/python3.10/site-packages/sqlglot/lineage.py', 'venv/lib/python3.10/site-packages/strong_typing/classdef.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/duckdb.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/generator.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/connection.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/dremio.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/spark.py', 'venv/lib/python3.10/site-packages/pysqlsync/data/exchange.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/starrocks.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/spark.py', 'venv/lib/python3.10/site-packages/strong_typing/mapping.py', 'venv/lib/python3.10/site-packages/pysqlsync/model/data_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/delta/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/generator.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/connection.py', 'venv/lib/python3.10/site-packages/pysqlsync/util/dispatch.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/object_types.py', 'venv/lib/python3.10/site-packages/referencing/_core.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/tsql.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/test/__init__.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/typing/test_all_concrete_validators_match_protocol.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/annotate_types.py', 'venv/lib/python3.10/site-packages/sqlglot/trie.py', 'venv/lib/python3.10/site-packages/strong_typing/serializer.py', 'venv/lib/python3.10/site-packages/sqlglot/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/transforms.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/athena.py', 'venv/lib/python3.10/site-packages/pysqlsync/base.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/tsql.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/dialect.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/data_types.py', 'venv/lib/python3.10/site-packages/referencing/retrieval.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/engine.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/snowflake/generator.py', 'venv/lib/python3.10/site-packages/pysqlsync/util/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/discovery.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_format.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/doris.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/inspection.py', 'venv/lib/python3.10/site-packages/referencing/__init__.py', 'venv/lib/python3.10/site-packages/jsonschema/exceptions.py', 'venv/lib/python3.10/site-packages/referencing/jsonschema.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/redshift/dependency.py', 'venv/lib/python3.10/site-packages/pysqlsync/util/typing.py', 'venv/lib/python3.10/site-packages/sqlglot/__main__.py', 'venv/lib/python3.10/site-packages/referencing/typing.py', 'venv/lib/python3.10/site-packages/sqlglot/time.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/discovery.py', 'venv/lib/python3.10/site-packages/jsonschema/_typing.py', 'venv/lib/python3.10/site-packages/jsonschema/validators.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/teradata.py', 'venv/lib/python3.10/site-packages/sqlglot/diff.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/engine.py', 'venv/lib/python3.10/site-packages/jsonschema/__main__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/discovery.py', 'venv/lib/python3.10/site-packages/sqlglot/executor/context.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/object_types.py', 'venv/lib/python3.10/site-packages/referencing/_attrs.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/scope.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/object_types.py', 'venv/lib/python3.10/site-packages/referencing/tests/test_retrieval.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/mutation.py', 'venv/lib/python3.10/site-packages/attr/_compat.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/trino/engine.py', 'venv/lib/python3.10/site-packages/pysqlsync/data/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/connection.py', 'venv/lib/python3.10/site-packages/attr/_config.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/engine.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/unnest_subqueries.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/spark2.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/data_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/trino/discovery.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/discovery.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/data_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/engine.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/delta/generator.py', 'venv/lib/python3.10/site-packages/jsonschema/_types.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/validator_creation.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/discovery.py', 'venv/lib/python3.10/site-packages/attrs/__init__.py', 'venv/lib/python3.10/site-packages/jsonschema/cli.py', 'venv/lib/python3.10/site-packages/attr/exceptions.py', 'venv/lib/python3.10/site-packages/jsonschema_specifications/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/mutation.py', 'venv/lib/python3.10/site-packages/strong_typing/docstring.py', 'venv/lib/python3.10/site-packages/sqlglot/generator.py', 'venv/lib/python3.10/site-packages/sqlglot/executor/python.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/unused_registry.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/snowflake/engine.py', 'venv/lib/python3.10/site-packages/pysqlsync/model/entity_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/sql_to_py.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/dune.py', 'venv/lib/python3.10/site-packages/sqlglot/schema.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/mutation.py', 'venv/lib/python3.10/site-packages/attr/validators.py', 'venv/lib/python3.10/site-packages/jsonschema/_format.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/normalize.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/qualify_tables.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/dependency.py', 'venv/lib/python3.10/site-packages/pysqlsync/model/id_types.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/eliminate_joins.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/import_benchmark.py', 'venv/lib/python3.10/site-packages/attrs/converters.py', 'venv/lib/python3.10/site-packages/strong_typing/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/mutation.py', 'venv/lib/python3.10/site-packages/sqlglot/helper.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/trino.py', 'venv/lib/python3.10/site-packages/pysqlsync/util/dataclasses.py', 'venv/lib/python3.10/site-packages/pysqlsync/resultset.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/resolver.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/mutation.py', 'venv/lib/python3.10/site-packages/sqlglot/planner.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/trino/generator.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/trino/connection.py', 'venv/lib/python3.10/site-packages/attr/converters.py', 'venv/lib/python3.10/site-packages/strong_typing/inspection.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/generator.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/connection.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/delta/object_types.py', 'venv/lib/python3.10/site-packages/truststore/_ssl_constants.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/fabric.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/contains.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_utils.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/pushdown_projections.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/druid.py', 'venv/lib/python3.10/site-packages/referencing/exceptions.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/const_vs_enum.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mysql/dependency.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/delta/data_types.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/delta/engine.py', 'venv/lib/python3.10/site-packages/pysqlsync/data/generator.py', 'venv/lib/python3.10/site-packages/sqlglot/_typing.py', 'venv/lib/python3.10/site-packages/jsonschema_specifications/tests/test_jsonschema_specifications.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/presto.py', 'venv/lib/python3.10/site-packages/attr/_funcs.py', 'venv/lib/python3.10/site-packages/pysqlsync/factory.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/drill.py', 'venv/lib/python3.10/site-packages/jsonschema/_utils.py', 'venv/lib/python3.10/site-packages/truststore/__init__.py', 'venv/lib/python3.10/site-packages/strong_typing/core.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/presto.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/trino/dependency.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/mssql/dependency.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/useless_keywords.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/pushdown_predicates.py', 'venv/lib/python3.10/site-packages/truststore/_api.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/postgresql/dependency.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/hive.py', 'venv/lib/python3.10/site-packages/attr/_make.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_types.py', 'venv/lib/python3.10/site-packages/sqlglot/errors.py', 'venv/lib/python3.10/site-packages/truststore/_windows.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/constraints.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/hive.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/redshift/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/snowflake/dependency.py', 'venv/lib/python3.10/site-packages/sqlglot/tokens.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/typing/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/model/key_types.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/clickhouse.py', 'venv/lib/python3.10/site-packages/referencing/tests/test_core.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/redshift.py', 'venv/lib/python3.10/site-packages/attr/_next_gen.py', 'venv/lib/python3.10/site-packages/jsonschema_specifications/_core.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/object_dict.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/useless_applicator_schemas.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/eliminate_ctes.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/eliminate_subqueries.py', 'venv/lib/python3.10/site-packages/rpds/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/formation/py_to_sql.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/prql.py', 'venv/lib/python3.10/site-packages/jsonschema_specifications/tests/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/optimizer.py', 'venv/lib/python3.10/site-packages/attrs/exceptions.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/redshift/data_types.py', 'venv/lib/python3.10/site-packages/strong_typing/schema.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/_suite.py', 'venv/lib/python3.10/site-packages/strong_typing/auxiliary.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/databricks.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_deprecations.py', 'venv/lib/python3.10/site-packages/sqlglot/_version.py', 'venv/lib/python3.10/site-packages/attrs/validators.py', 'venv/lib/python3.10/site-packages/strong_typing/name.py', 'venv/lib/python3.10/site-packages/attrs/filters.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/simplify.py', 'venv/lib/python3.10/site-packages/strong_typing/topological.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_cli.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/__init__.py', 'venv/lib/python3.10/site-packages/attr/_cmp.py', 'venv/lib/python3.10/site-packages/attr/filters.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/qualify.py', 'venv/lib/python3.10/site-packages/attr/setters.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_validators.py', 'venv/lib/python3.10/site-packages/strong_typing/deserializer.py', 'venv/lib/python3.10/site-packages/jsonschema/_keywords.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/delta/dependency.py', 'venv/lib/python3.10/site-packages/pysqlsync/model/__init__.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/materialize.py', 'venv/lib/python3.10/site-packages/sqlglot/executor/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/test/dependency.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/exasol.py', 'venv/lib/python3.10/site-packages/jsonschema/_legacy_keywords.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/solr.py', 'venv/lib/python3.10/site-packages/truststore/_macos.py', 'venv/lib/python3.10/site-packages/jsonschema/tests/test_jsonschema_test_suite.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/redshift/generator.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/mysql.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/oracle/__init__.py', 'venv/lib/python3.10/site-packages/pysqlsync/dialect/redshift/connection.py', 'venv/lib/python3.10/site-packages/jsonschema/benchmarks/nested_schemas.py', 'venv/lib/python3.10/site-packages/sqlglot/optimizer/canonicalize.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/sqlite.py', 'venv/lib/python3.10/site-packages/sqlglot/dialects/postgres.py', 'venv/lib/python3.10/site-packages/pysqlsync/__init__.py', 'venv/lib/python3.10/site-packages/attr/_version_info.py', 'venv/lib/python3.10/site-packages/sqlglot/typing/mysql.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [89433]
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [1640]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'pro/__init__.py', 'pro/sync.py', 'pro/backup.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1640]
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [1685]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'pro/sync.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1685]
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [1778]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:61522 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61524 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61524 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61524 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61632 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61632 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61638 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61644 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61648 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61811 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61811 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62077 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62079 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62081 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62084 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62089 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62377 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62377 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62377 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62379 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62379 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62444 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62446 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62455 - "GET /connections HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'monitor/manager.py', 'monitor/__init__.py', 'monitor/collectors/__init__.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1778]
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [9886]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'monitor/manager.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [9886]
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [9946]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:62557 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62559 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62562 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62565 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62760 - "OPTIONS /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62760 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62782 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62807 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62807 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62817 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62843 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62843 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62849 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62849 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62860 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62872 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62875 - "GET /history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62877 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62955 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62955 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62955 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62957 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62957 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62964 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63276 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63276 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63276 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63278 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63282 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [9946]
+/Users/ilidiomartins/src/SqlForge/backend/models.py:19: UserWarning: Field name "schema" in "TableInfo" shadows an attribute in parent "BaseModel"
+  class TableInfo(BaseModel):
+/Users/ilidiomartins/src/SqlForge/backend/venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.10) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/Users/ilidiomartins/src/SqlForge/backend/main.py:11: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [21491]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:63585 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63585 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63585 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63587 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63590 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63625 - "GET /ai/models?api_key=AIzaSyCHIFKTmbF3jQ3MCFs-8c8IHmDk_1Yfmg4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63643 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63643 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63643 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63668 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63668 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63668 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63668 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63733 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63733 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63738 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63756 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63756 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63859 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63862 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63862 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63862 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63935 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63953 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63953 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63953 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63965 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64174 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64174 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64178 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64178 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64178 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64178 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64196 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64196 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64218 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64218 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64234 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64239 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64239 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64285 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64285 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64294 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64301 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64342 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64342 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64347 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /connections/e62b9c26-ccac-425c-ad65-1cf64b00ea3f/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64352 - "GET /connections/1989a28a-86e8-461b-9e07-14cb183291c9/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64365 - "GET /connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64365 - "GET /connections/1989a28a-86e8-461b-9e07-14cb183291c9/tables HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64365 - "GET /connections/1989a28a-86e8-461b-9e07-14cb183291c9/tables HTTP/1.1" 200 OK

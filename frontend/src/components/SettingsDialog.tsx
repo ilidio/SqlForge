@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Sparkles, Settings as SettingsIcon, Shield } from 'lucide-react';
+import { Save, Sparkles, Settings as SettingsIcon, Shield, RefreshCw } from 'lucide-react';
+import { api } from '../api';
 
 interface SettingsDialogProps {
     open: boolean;
@@ -14,6 +15,9 @@ interface SettingsDialogProps {
 export default function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     // AI Settings
     const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+    const [aiModel, setAiModel] = useState(() => localStorage.getItem('ai_model') || 'gemini-1.5-flash');
+    const [availableModels, setAvailableModels] = useState<{name: string, display_name: string}[]>([]);
+    const [fetchingModels, setFetchingModels] = useState(false);
     const [openAiApiKey, setOpenAiApiKey] = useState(() => localStorage.getItem('openai_api_key') || '');
     const [preferredAi, setPreferredAi] = useState(() => localStorage.getItem('preferred_ai') || 'gemini');
 
@@ -26,6 +30,8 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setGeminiApiKey(localStorage.getItem('gemini_api_key') || '');
             // eslint-disable-next-line react-hooks/set-state-in-effect
+            setAiModel(localStorage.getItem('ai_model') || 'gemini-1.5-flash');
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setOpenAiApiKey(localStorage.getItem('openai_api_key') || '');
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setPreferredAi(localStorage.getItem('preferred_ai') || 'gemini');
@@ -36,8 +42,25 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
         }
     }, [open]);
 
+    const fetchModels = async () => {
+        if (!geminiApiKey) {
+            alert("Please enter an API Key first.");
+            return;
+        }
+        setFetchingModels(true);
+        try {
+            const models = await api.getAiModels(geminiApiKey);
+            setAvailableModels(models);
+        } catch {
+            alert("Failed to fetch models. Check your API key.");
+        } finally {
+            setFetchingModels(false);
+        }
+    };
+
     const handleSaveAI = () => {
         localStorage.setItem('gemini_api_key', geminiApiKey);
+        localStorage.setItem('ai_model', aiModel);
         localStorage.setItem('openai_api_key', openAiApiKey);
         localStorage.setItem('preferred_ai', preferredAi);
         alert('AI settings saved!');
@@ -101,6 +124,42 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
                                         onChange={e => setGeminiApiKey(e.target.value)} 
                                     />
                                     <p className="text-[10px] text-muted-foreground">Used for generating SQL from natural language descriptions.</p>
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="ai-model">AI Model</Label>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon-sm" 
+                                            className="h-6 w-6 text-primary"
+                                            onClick={fetchModels}
+                                            loading={fetchingModels}
+                                            title="Refresh models from Google"
+                                        >
+                                            {!fetchingModels && <RefreshCw size={12} />}
+                                        </Button>
+                                    </div>
+                                    {availableModels.length > 0 ? (
+                                        <select 
+                                            id="ai-model"
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                            value={aiModel}
+                                            onChange={(e) => setAiModel(e.target.value)}
+                                        >
+                                            {availableModels.map(m => (
+                                                <option key={m.name} value={m.name}>{m.display_name}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <Input 
+                                            id="ai-model"
+                                            placeholder="e.g. gemini-1.5-flash"
+                                            value={aiModel} 
+                                            onChange={e => setAiModel(e.target.value)} 
+                                        />
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground">Specify the model to use (e.g., gemini-1.5-pro, gemini-1.5-flash).</p>
                                 </div>
 
                                 <div className="grid gap-2 opacity-50">

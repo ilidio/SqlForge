@@ -1,10 +1,12 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { api } from '../api';
 import { ResultsTable } from './ResultsTable';
-import { Play, Sparkles, Key, X, Download, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'sql-formatter';
+import { cn } from '@/lib/utils';
+import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet } from 'lucide-react';
 
 interface Props {
   connectionId: string;
@@ -26,16 +28,24 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   const [showAi, setShowAi] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [aiModel, setAiModel] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
+    const savedModel = localStorage.getItem('ai_model');
     if (savedKey) setApiKey(savedKey);
+    if (savedModel) setAiModel(savedModel);
   }, []);
 
   const saveApiKey = (key: string) => {
     setApiKey(key);
     localStorage.setItem('gemini_api_key', key);
+  };
+
+  const saveAiModel = (model: string) => {
+    setAiModel(model);
+    localStorage.setItem('ai_model', model);
   };
 
   const runQuery = async () => {
@@ -70,13 +80,13 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   }));
 
   const generateSQL = async () => {
-    if (!apiKey) {
-      alert("Please enter a Gemini API Key first.");
+    if (!apiKey || !aiModel) {
+      alert("Please configure both Gemini API Key and AI Model in Settings first.");
       return;
     }
     setAiLoading(true);
     try {
-      const res = await api.generateSQL(connectionId, aiPrompt, apiKey);
+      const res = await api.generateSQL(connectionId, aiPrompt, apiKey, aiModel);
       setSql(res.sql);
       
       const autoExecute = localStorage.getItem('auto_execute') === 'true';
@@ -118,6 +128,33 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     document.body.removeChild(link);
   };
 
+  const exportJSON = () => {
+    if (!result || !result.rows) return;
+    const blob = new Blob([JSON.stringify(result.rows, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'export.json');
+    link.click();
+  };
+
+  const exportSQL = () => {
+    if (!result || !result.rows || result.rows.length === 0) return;
+    const tableName = 'exported_data';
+    const sqlInserts = result.rows.map(row => {
+        const cols = Object.keys(row).join(', ');
+        const vals = Object.values(row).map(v => typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v === null ? 'NULL' : v).join(', ');
+        return `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`;
+    }).join('\n');
+    
+    const blob = new Blob([sqlInserts], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'export.sql');
+    link.click();
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="h-1/2 flex flex-col border-b border-border relative">
@@ -153,11 +190,21 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
               <Input 
                 type="password"
                 placeholder="••••••••••••••••••••"
-                className="h-6 text-[10px] w-64 bg-transparent border-dashed border-muted-foreground/30 focus-visible:border-primary/50"
+                className="h-6 text-[10px] w-48 bg-transparent border-dashed border-muted-foreground/30 focus-visible:border-primary/50"
                 value={apiKey}
                 onChange={e => saveApiKey(e.target.value)}
               />
-              <div className="text-[10px] text-muted-foreground/60 italic">Your key is stored locally in your browser.</div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium ml-2">
+                <Terminal size={12} />
+                Model:
+              </div>
+              <Input 
+                placeholder="e.g. gemini-1.5-flash"
+                className="h-6 text-[10px] w-36 bg-transparent border-dashed border-muted-foreground/30 focus-visible:border-primary/50"
+                value={aiModel}
+                onChange={e => saveAiModel(e.target.value)}
+              />
+              <div className="text-[10px] text-muted-foreground/60 italic ml-2">Your settings are stored locally.</div>
             </div>
           </div>
         )}
@@ -174,22 +221,41 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                 variant="ghost" 
                 size="sm"
                 onClick={() => setShowAi(true)}
-                className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/10 gap-1.5"
+                className={cn(
+                    "h-7 text-xs gap-1.5",
+                    (!apiKey || !aiModel) ? "text-amber-500 hover:text-amber-600 hover:bg-amber-500/10" : "text-primary hover:text-primary hover:bg-primary/10"
+                )}
               >
-                <Sparkles size={12} /> AI Copilot
+                <Sparkles size={12} /> 
+                AI Copilot
+                {(!apiKey || !aiModel) && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" title="AI not configured" />}
               </Button>
             )}
           </div>
           <div className="flex gap-2 mr-1">
              {result && result.rows && result.rows.length > 0 && (
-                 <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={exportCSV}
-                    className="h-8 text-xs gap-1.5"
-                 >
-                    <Download size={13} /> Export CSV
-                 </Button>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button 
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs gap-1.5"
+                        >
+                            <Download size={13} /> Export <ChevronDown size={12} className="opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-40 p-1 flex flex-col gap-0.5" align="end">
+                        <Button variant="ghost" size="sm" className="justify-start font-normal text-xs h-8 gap-2" onClick={exportCSV}>
+                            <FileSpreadsheet size={14} className="text-emerald-500" /> CSV
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start font-normal text-xs h-8 gap-2" onClick={exportJSON}>
+                            <FileJson size={14} className="text-amber-500" /> JSON
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start font-normal text-xs h-8 gap-2" onClick={exportSQL}>
+                            <FileCode size={14} className="text-blue-500" /> SQL Inserts
+                        </Button>
+                    </PopoverContent>
+                 </Popover>
              )}
              <Button 
                 size="sm"

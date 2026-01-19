@@ -12,9 +12,14 @@ import { useTheme } from '@/lib/ThemeContext';
 interface Props {
   onSelectTable: (connId: string, tableName: string) => void;
   onOpenQuery: (connId: string, sql?: string) => void;
+  onOpenBrowser: (connId: string) => void;
   onNewConnection: () => void;
   onOpenSettings: () => void;
   onSelectConnection?: (connId: string) => void;
+  onRefresh?: () => void;
+  connections: ConnectionConfig[];
+  loading?: boolean;
+  selectedConnectionId?: string | null;
 }
 
 const DB_ICONS: Record<string, { icon: LucideIcon, color: string }> = {
@@ -27,40 +32,27 @@ const DB_ICONS: Record<string, { icon: LucideIcon, color: string }> = {
     mongodb: { icon: Box, color: 'text-emerald-500' },
 };
 
-export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onNewConnection, onOpenSettings, onSelectConnection }) => {
+export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBrowser, onNewConnection, onOpenSettings, onSelectConnection, onRefresh, connections, loading, selectedConnectionId }) => {
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('connections');
-  const [connections, setConnections] = useState<ConnectionConfig[]>([]);
   const [history, setHistory] = useState<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [tables, setTables] = useState<Record<string, {name: string, type: string}[]>>({});
   const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const loadConnections = async () => {
-    setLoading(true);
-    try {
-      const data = await api.getConnections();
-      setConnections(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   const loadHistory = async () => {
-    setLoading(true);
+    // Keep local loading for history
     try {
         const data = await api.getHistory();
         setHistory(data);
-    } finally {
-        setLoading(false);
+    } catch (e) {
+        console.error(e);
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'connections') loadConnections();
-    else loadHistory();
+    if (activeTab === 'history') loadHistory();
   }, [activeTab]);
 
   const toggleConnection = async (conn: ConnectionConfig) => {
@@ -123,7 +115,7 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onNewConn
             <div className="flex justify-between items-center mb-2 px-3">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Connections</span>
                 <div className="flex gap-0.5">
-                    <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={loadConnections} loading={loading && activeTab === 'connections'}>
+                    <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onRefresh} loading={loading && activeTab === 'connections'}>
                         {!loading && <RefreshCw size={12} />}
                     </Button>
                     <Button variant="ghost" size="icon-sm" className="h-6 w-6 text-primary hover:text-primary hover:bg-primary/10" onClick={onNewConnection}><Plus size={12} /></Button>
@@ -136,31 +128,45 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onNewConn
                         const IconInfo = DB_ICONS[conn.type] || DB_ICONS.sqlite;
                         const Icon = IconInfo.icon;
                         const isExpanded = expanded[conn.id!];
+                        const isSelected = selectedConnectionId === conn.id;
 
                         return (
-                            <div key={conn.id} className="group/conn">
+                            <div key={conn.id} className="group/conn px-1">
                                 <div 
                                     className={cn(
                                         "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-all border border-transparent",
-                                        isExpanded ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                                        isSelected 
+                                            ? "bg-primary/10 text-primary border-l-2 border-primary rounded-l-none" 
+                                            : isExpanded 
+                                                ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+                                                : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70 hover:text-sidebar-foreground"
                                     )}
                                     onClick={() => toggleConnection(conn)}
-                                    onDoubleClick={() => onOpenQuery(conn.id!)}
+                                    onDoubleClick={() => onOpenBrowser?.(conn.id!)}
                                 >
                                     <div className="w-4 flex justify-center">
-                                        {isExpanded ? <ChevronDown size={12} className="text-muted-foreground" /> : <ChevronRight size={12} className="text-muted-foreground/50" />}
+                                        {isExpanded ? <ChevronDown size={12} className={cn(isSelected ? "text-primary" : "text-muted-foreground")} /> : <ChevronRight size={12} className={cn(isSelected ? "text-primary/50" : "text-muted-foreground/50")} />}
                                     </div>
                                     <div className="relative">
-                                        <Icon size={14} className={cn(IconInfo.color, "shrink-0")} />
+                                        <Icon size={14} className={cn(isSelected ? "text-primary" : IconInfo.color, "shrink-0")} />
                                         {connectedIds.has(conn.id!) && (
-                                            <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full border border-sidebar shadow-sm" />
+                                            <div className={cn(
+                                                "absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border shadow-sm",
+                                                isSelected ? "bg-primary border-background" : "bg-emerald-500 border-sidebar"
+                                            )} />
                                         )}
                                     </div>
-                                    <span className="truncate flex-1 font-medium text-xs">{conn.name}</span>
+                                    <span className={cn(
+                                        "truncate flex-1 text-xs",
+                                        isSelected ? "font-bold" : "font-medium"
+                                    )}>{conn.name}</span>
                                     <Button 
                                         variant="ghost" 
                                         size="icon-sm" 
-                                        className="h-5 w-5 opacity-0 group-hover/conn:opacity-100 hover:bg-sidebar-accent"
+                                        className={cn(
+                                            "h-5 w-5 opacity-0 group-hover/conn:opacity-100",
+                                            isSelected ? "hover:bg-primary/10 text-primary" : "hover:bg-sidebar-accent"
+                                        )}
                                         onClick={(e) => { e.stopPropagation(); onOpenQuery(conn.id!); }}
                                     >
                                         <Plus size={10} />
@@ -198,6 +204,7 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onNewConn
                                                                         key={t.name} 
                                                                         className="flex items-center gap-2 px-2 py-1.5 hover:bg-sidebar-accent/50 rounded-md cursor-pointer text-muted-foreground hover:text-foreground text-xs transition-all group/table"
                                                                         onClick={() => onSelectTable(conn.id!, t.name)}
+                                                                        onDoubleClick={() => onSelectTable(conn.id!, t.name)}
                                                                     >
                                                                         <div className="shrink-0">{getIconForTable(t.type)}</div>
                                                                         <span className="truncate flex-1">{t.name}</span>
