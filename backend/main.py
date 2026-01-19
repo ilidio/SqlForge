@@ -5,10 +5,11 @@ from typing import List, Dict, Any
 import time
 
 # Import from local modules
-from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest
+from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest
 import database
 import internal_db
 import google.generativeai as genai
+from pro import sync as pro_sync
 
 app = FastAPI(title="SqlForge API")
 
@@ -166,6 +167,28 @@ def generate_sql(request: AIRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/pro/sync/diff")
+def schema_diff(request: SyncRequest):
+    source = internal_db.get_connection(request.source_connection_id)
+    target = internal_db.get_connection(request.target_connection_id)
+    
+    if not source or not target:
+        raise HTTPException(status_code=404, detail="Source or target connection not found")
+    
+    sql = pro_sync.diff_schemas(source, target)
+    return {"sql": sql}
+
+@app.post("/pro/sync/execute")
+def schema_sync(request: SyncRequest):
+    source = internal_db.get_connection(request.source_connection_id)
+    target = internal_db.get_connection(request.target_connection_id)
+    
+    if not source or not target:
+        raise HTTPException(status_code=404, detail="Source or target connection not found")
+    
+    result = pro_sync.sync_schemas(source, target, dry_run=request.dry_run)
+    return result
 
 if __name__ == "__main__":
     import uvicorn

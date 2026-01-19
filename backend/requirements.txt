@@ -14,3 +14,5 @@ pymssql
 oracledb
 redis
 pymongo
+sqlglot
+pysqlsync

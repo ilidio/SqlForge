@@ -28,15 +28,31 @@ export default function SyncWizard({ open, onOpenChange, mode }: SyncWizardProps
     }, [open]);
 
     const handleCompare = async () => {
+        if (!sourceId || !targetId) return;
         setLoading(true);
         setStep(3);
-        // Simulated Pro diff engine call
-        setTimeout(() => {
-            const source = connections.find(c => c.id === sourceId)?.name;
-            const target = connections.find(c => c.id === targetId)?.name;
-            setDiffResult(`-- Generated SQL Plan from ${source} to ${target}\n-- Mode: ${mode.toUpperCase()} SYNC\n\nCREATE TABLE IF NOT EXISTS public.users_new (\n    id SERIAL PRIMARY KEY,\n    email VARCHAR(255) UNIQUE\n);\n\n-- Suggested Optimization\nCREATE INDEX idx_users_email ON public.users_new(email);`);
+        try {
+            const result = await api.diffSchemas(sourceId, targetId);
+            setDiffResult(result.sql);
+        } catch (e: any) {
+            setDiffResult(`-- Error: ${e.response?.data?.detail || e.message}`);
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
+    };
+
+    const handleExecute = async () => {
+        if (!sourceId || !targetId) return;
+        setLoading(true);
+        try {
+            const result = await api.executeSync(sourceId, targetId, false);
+            alert(result.message);
+            if (result.status === 'success') onOpenChange(false);
+        } catch (e: any) {
+            alert(`Error: ${e.response?.data?.detail || e.message}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getModeTitle = () => {
@@ -170,8 +186,12 @@ export default function SyncWizard({ open, onOpenChange, mode }: SyncWizardProps
                         {step === 1 && <Button disabled={!sourceId} onClick={() => setStep(2)}>Next: Select Target <ArrowRight size={14} className="ml-2" /></Button>}
                         {step === 2 && <Button disabled={!targetId} onClick={handleCompare} className="bg-primary hover:bg-primary/90">Compare Databases <Zap size={14} className="ml-2" /></Button>}
                         {step === 3 && !loading && (
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2" onClick={() => alert("Changes Applied! (Pro Feature)")}>
-                                Execute Plan <Zap size={14} />
+                            <Button 
+                                className="bg-emerald-600 hover:bg-emerald-700 gap-2" 
+                                onClick={handleExecute}
+                                disabled={loading}
+                            >
+                                {loading ? <RefreshCw className="animate-spin" size={14} /> : <>Execute Plan <Zap size={14} /></>}
                             </Button>
                         )}
                     </div>

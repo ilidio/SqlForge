@@ -36,3 +36,8 @@ class AIRequest(BaseModel):
     prompt: str
     api_key: str
     model: str = "gemini-3-flash-preview"
+
+class SyncRequest(BaseModel):
+    source_connection_id: str
+    target_connection_id: str
+    dry_run: bool = True
