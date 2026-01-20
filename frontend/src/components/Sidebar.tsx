@@ -180,10 +180,17 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
                                             )} />
                                         )}
                                     </div>
-                                    <span className={cn(
-                                        "truncate flex-1 text-xs",
-                                        isSelected ? "font-bold" : "font-medium"
-                                    )}>{conn.name}</span>
+                                    <div className="flex-1 min-w-0 flex flex-col">
+                                        <span className={cn(
+                                            "truncate text-xs leading-none",
+                                            isSelected ? "font-bold" : "font-medium"
+                                        )}>{conn.name}</span>
+                                        {conn.type === 'sqlite' && conn.filepath && (
+                                            <span className="truncate text-[9px] text-muted-foreground/60 font-mono mt-0.5" title={conn.filepath}>
+                                                {conn.filepath.split('/').pop()}
+                                            </span>
+                                        )}
+                                    </div>
                                     <Button 
                                         variant="ghost" 
                                         size="icon-sm" 

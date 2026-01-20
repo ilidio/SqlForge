@@ -23,6 +23,7 @@ interface Tab {
   type: 'query' | 'table' | 'browser';
   connectionId: string;
   content?: string; // For query: sql; For table: tableName
+  data?: {columns: string[], rows: Record<string, unknown>[], error: string | null};
 }
 
 function App() {
@@ -151,17 +152,30 @@ function App() {
       }
   };
 
-  const handleSelectTable = (connId: string, tableName: string) => {
+  const handleSelectTable = async (connId: string, tableName: string) => {
     const maxRows = localStorage.getItem('max_rows') || '100';
+    const sql = `SELECT * FROM ${tableName} LIMIT ${maxRows}`;
+    
+    // Optimistically create the tab
+    const tabId = Math.random().toString(36).substring(7);
     const newTab: Tab = {
-      id: Math.random().toString(36).substring(7),
+      id: tabId,
       title: tableName,
-      type: 'query',
+      type: 'table',
       connectionId: connId,
-      content: `SELECT * FROM ${tableName} LIMIT ${maxRows}`
+      content: tableName,
+      data: { columns: [], rows: [], error: null }
     };
-    setTabs([...tabs, newTab]);
-    setActiveTabId(newTab.id);
+    
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(tabId);
+
+    try {
+        const res = await api.runQuery(connId, sql);
+        setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: res } : t));
+    } catch (e: any) {
+        setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: { columns: [], rows: [], error: e.message } } : t));
+    }
   };
 
   const closeTab = (id: string, e?: React.MouseEvent | { stopPropagation: () => void }) => {
@@ -352,6 +366,19 @@ function App() {
                     ref={activeQueryTabRef}
                     connectionId={activeTab.connectionId} 
                     initialSql={activeTab.content} 
+                  />
+                )}
+                {activeTab.type === 'table' && (
+                  <ResultsTable 
+                    key={activeTab.id}
+                    data={activeTab.data || {columns: [], rows: [], error: null}} 
+                    connectionId={activeTab.connectionId}
+                    tableName={activeTab.content}
+                    onRefresh={async () => {
+                        const maxRows = localStorage.getItem('max_rows') || '100';
+                        const res = await api.runQuery(activeTab.connectionId, `SELECT * FROM ${activeTab.content} LIMIT ${maxRows}`);
+                        setTabs(prev => prev.map(t => t.id === activeTab.id ? { ...t, data: res } : t));
+                    }}
                   />
                 )}
                 {activeTab.type === 'browser' && (

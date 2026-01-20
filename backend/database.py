@@ -119,6 +119,19 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     
     return items
 
+def execute_mutation(config: ConnectionConfig, query_str: str):
+    if config.type in ['redis', 'mongodb']:
+        return {"success": False, "error": f"Mutations not yet supported for {config.type}"}
+    
+    engine = get_engine(config)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(query_str))
+            conn.commit()
+            return {"success": True, "error": None}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 def execute_query(config: ConnectionConfig, query_str: str):
     if config.type == 'redis':
         try:

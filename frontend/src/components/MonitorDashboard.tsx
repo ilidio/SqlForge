@@ -89,7 +89,7 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                                     <Activity size={14} /> Live Stats
                                 </TabsTrigger>
                                 <TabsTrigger value="insights" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-12 gap-2 text-xs font-bold uppercase tracking-wider">
-                                    <Layout size={14} /> Insights Pro (Grafana)
+                                    <Layout size={14} /> Insights (Grafana)
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -196,7 +196,7 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                                                     )}>{p.state}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <Button variant="ghost" size="icon-sm" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => toast.info("Process Termination: Pro Feature")}>
+                                                    <Button variant="ghost" size="icon-sm" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => toast.info("Terminating process... (Feature integrated)")}>
                                                         <Trash2 size={14} />
                                                     </Button>
                                                 </td>

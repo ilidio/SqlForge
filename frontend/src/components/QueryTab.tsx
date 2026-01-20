@@ -156,6 +156,8 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     link.click();
   };
 
+  const inferredTable = sql.match(/FROM\s+([a-zA-Z0-9_]+)/i)?.[1];
+
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="h-1/2 flex flex-col border-b border-border relative">
@@ -282,7 +284,12 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
       </div>
       
       <div className="h-1/2 flex flex-col overflow-hidden bg-background">
-         <ResultsTable data={result} />
+         <ResultsTable 
+            data={result} 
+            connectionId={connectionId} 
+            tableName={inferredTable}
+            onRefresh={runQuery}
+         />
       </div>
     </div>
   );

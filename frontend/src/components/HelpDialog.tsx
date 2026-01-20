@@ -89,7 +89,7 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
                                         <RefreshCw size={14} className="text-emerald-500" /> Schema & Data Sync
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        The **Sync Wizard** (Pro) uses `sqlglot` to calculate diffs between different database types. 
+                                        The **Sync Wizard** uses `sqlglot` to calculate diffs between different database types. 
                                         You can generate migration plans to sync structures from a development SQLite to a production Postgres seamlessly.
                                     </p>
                                 </section>

@@ -98,5 +98,6 @@ def sync_schemas(source_config: ConnectionConfig, target_config: ConnectionConfi
     if dry_run:
         return {"status": "success", "message": "Dry run completed", "sql": sql}
     
-    # Execution logic would go here
-    return {"status": "pending", "message": "Schema synchronization execution is a Pro-only automated feature.", "sql": sql}
+    # For this version, we provide the transpilated source DDL as a success message.
+    # In a future update, we can use engine.connect().execute(text(sql)) to apply it automatically.
+    return {"status": "success", "message": "Schema synchronization plan generated successfully. You can now apply the SQL below.", "sql": sql}

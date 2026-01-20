@@ -20,7 +20,7 @@ It is designed for backend engineers, data engineers, and DBAs who want speed, p
 - **Production-Grade Schema Sync:** Implemented a robust diffing engine using `sqlglot` for cross-dialect synchronization (e.g., SQLite to Postgres).
 - **StateManager Module:** New structured state management for persisting and restoring application snapshots.
 - **Monitoring Dashboard:** Integrated Prometheus and Grafana for professional-grade database and system monitoring.
-- **Refined Data Editor:** spreadsheet-style grid with inline editing, batch updates, and keyboard navigation.
+- **Refined Data Editor:** Spreadsheet-style grid with inline editing, batch updates, and keyboard navigation.
 - **Consolidated Scripts:** All management tools are now unified in the root `/scripts` directory.
 
 ---

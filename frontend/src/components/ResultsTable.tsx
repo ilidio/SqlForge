@@ -6,23 +6,81 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface Props {
+  connectionId?: string;
+  tableName?: string;
   data: {
     columns: string[];
     rows: Record<string, unknown>[];
     error: string | null;
   } | null;
+  onRefresh?: () => void;
 }
 
-export const ResultsTable: React.FC<Props> = ({ data }) => {
+export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, onRefresh }) => {
   const [editingCell, setEditingCell] = useState<{rowIndex: number, column: string} | null>(null);
   const [changes, setChanges] = useState<Record<string, unknown>>({}); // Format: "rowIndex-column": value
   const [editValue, setEditValue] = useState<string>('');
+  const [applying, setApplying] = useState(false);
 
   // Reset changes when new data comes in
   useEffect(() => {
     setChanges({});
     setEditingCell(null);
   }, [data]);
+
+  const handleApplyChanges = async () => {
+    if (!connectionId || !tableName || !data) return;
+    setApplying(true);
+    
+    try {
+        const sqlList: string[] = [];
+        const rowIndices = new Set(Object.keys(changes).map(k => k.split('-')[0]));
+        
+        for (const idxStr of rowIndices) {
+            const rowIndex = parseInt(idxStr);
+            const originalRow = data.rows[rowIndex];
+            
+            // Collect all changed columns for this row
+            const updates: string[] = [];
+            Object.keys(changes).forEach(key => {
+                const [r, col] = key.split('-');
+                if (parseInt(r) === rowIndex) {
+                    const val = changes[key];
+                    const sqlVal = typeof val === 'string' ? `'${val.replace(/'/g, "''")}'` : (val === null ? 'NULL' : val);
+                    updates.push(`${col} = ${sqlVal}`);
+                }
+            });
+
+            if (updates.length > 0) {
+                // Determine WHERE clause (Prefer PK if known, but here we use all original columns for safety)
+                const conditions = data.columns.map(col => {
+                    const val = originalRow[col];
+                    if (val === null) return `${col} IS NULL`;
+                    const sqlVal = typeof val === 'string' ? `'${String(val).replace(/'/g, "''")}'` : val;
+                    return `${col} = ${sqlVal}`;
+                }).join(' AND ');
+
+                sqlList.push(`UPDATE ${tableName} SET ${updates.join(', ')} WHERE ${conditions};`);
+            }
+        }
+
+        if (sqlList.length > 0) {
+            const res = await api.runBatchQueries(connectionId, sqlList);
+            const errors = res.results.filter(r => !r.success);
+            if (errors.length > 0) {
+                toast.error(`Failed to apply some changes: ${errors[0].error}`);
+            } else {
+                toast.success("Changes applied successfully!");
+                setChanges({});
+                onRefresh?.();
+            }
+        }
+    } catch (e: any) {
+        toast.error(`Error: ${e.message}`);
+    } finally {
+        setApplying(false);
+    }
+  };
 
   if (!data) {
     return (
@@ -87,8 +145,14 @@ export const ResultsTable: React.FC<Props> = ({ data }) => {
                   {Object.keys(changes).length} pending changes in this view
               </div>
               <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setChanges({})}>Discard</Button>
-                  <Button variant="default" size="sm" className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={() => toast.info("Apply Changes: This will generate an UPDATE script in the Pro version.")}>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setChanges({})} disabled={applying}>Discard</Button>
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 gap-1.5" 
+                    onClick={handleApplyChanges}
+                    loading={applying}
+                  >
                       <Save size={12} /> Apply Changes
                   </Button>
               </div>

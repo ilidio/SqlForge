@@ -4,12 +4,12 @@ from typing import Optional, List, Dict, Any
 class ConnectionConfig(BaseModel):
     id: Optional[str] = None
     name: str
-    type: str # 'sqlite', 'postgresql'
+    type: str # 'sqlite', 'postgresql', etc.
     host: Optional[str] = None
     port: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None
-    database: str
+    database: Optional[str] = None
     filepath: Optional[str] = None # For SQLite
 
 class QueryRequest(BaseModel):

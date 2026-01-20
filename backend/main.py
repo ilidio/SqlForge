@@ -123,6 +123,25 @@ def run_query(query: QueryRequest):
     
     return result
 
+@app.post("/query/batch")
+def run_batch_queries(request: Dict[str, Any]):
+    # request format: { connection_id: str, sql_list: List[str] }
+    conn_id = request.get("connection_id")
+    sql_list = request.get("sql_list", [])
+    
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    results = []
+    for sql in sql_list:
+        res = database.execute_mutation(config, sql)
+        results.append(res)
+        if not res["success"]:
+            break # Stop on first error
+            
+    return {"results": results}
+
 @app.get("/history", response_model=List[Dict[str, Any]])
 def get_history_endpoint():
     return internal_db.get_history()

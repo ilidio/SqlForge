@@ -3,7 +3,7 @@
 # Ensure a clean environment
 echo "--- Preparing Environment ---"
 ./scripts/stop_dbs.sh
-./scripts/remove_local_dbs.sh
+./scripts/remove_local_dbs.sh --all
 ./scripts/start_dbs.sh
 
 echo "Waiting for databases to initialize..."

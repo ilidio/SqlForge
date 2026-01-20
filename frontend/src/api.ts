@@ -23,6 +23,7 @@ export const api = {
   testConnection: (config: ConnectionConfig) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/test`, config).then(r => r.data),
   getTables: (connId: string) => axios.get<{name: string, type: string}[]>(`${API_URL}/connections/${connId}/tables`).then(r => r.data),
   runQuery: (connId: string, sql: string) => axios.post<{columns: string[], rows: Record<string, unknown>[], error: string | null}>(`${API_URL}/query`, { connection_id: connId, sql }).then(r => r.data),
+  runBatchQueries: (connId: string, sqlList: string[]) => axios.post<{results: {success: boolean, error: string | null}[]}>(`${API_URL}/query/batch`, { connection_id: connId, sql_list: sqlList }).then(r => r.data),
   getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),
   generateSQL: (connId: string, prompt: string, apiKey: string, model: string) => axios.post<{sql: string}>(`${API_URL}/ai/generate`, { connection_id: connId, prompt, api_key: apiKey, model }).then(r => r.data),
   diffSchemas: (sourceId: string, targetId: string) => axios.post<{sql: string}>(`${API_URL}/pro/sync/diff`, { source_connection_id: sourceId, target_connection_id: targetId }).then(r => r.data),
