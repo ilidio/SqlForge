@@ -302,10 +302,10 @@ function App() {
               }
           }
 
-          if (action === 'format_sql') activeQueryTabRef.current?.formatSql();
-          if (action === 'undo') activeQueryTabRef.current?.undo();
-          if (action === 'redo') activeQueryTabRef.current?.redo();
-          if (action === 'focus_editor') activeQueryTabRef.current?.focus();
+          if (action === 'format_sql' && activeTab?.type === 'query') activeQueryTabRef.current?.formatSql();
+          if (action === 'undo' && activeTab?.type === 'query') activeQueryTabRef.current?.undo();
+          if (action === 'redo' && activeTab?.type === 'query') activeQueryTabRef.current?.redo();
+          if (action === 'focus_editor' && activeTab?.type === 'query') activeQueryTabRef.current?.focus();
           if (action === 'focus_results') {
               if (activeTab?.type === 'query') activeQueryTabRef.current?.focusResults();
               else if (activeTab?.type === 'table') activeTableTabRef.current?.focus();
