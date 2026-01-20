@@ -16,8 +16,10 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
         { key: '⌘ + Q', desc: 'New Query Tab' },
         { key: '⌘ + N', desc: 'New Connection' },
         { key: '⌘ + ,', desc: 'Open Settings' },
-        { key: 'F5 or ⌘ + Enter', desc: 'Execute Query' },
-        { key: 'F8', desc: 'Focus Object Browser' },
+        { key: '⌘ + Enter', desc: 'Execute Query' },
+        { key: 'F8', desc: 'Toggle Sidebar' },
+        { key: 'F9', desc: 'Focus Query Editor' },
+        { key: 'F10', desc: 'Focus Result Grid' },
         { key: 'F11', desc: 'Toggle Full Screen' },
         { key: 'ESC', desc: 'Close Modals / Cancel' },
     ];
@@ -106,12 +108,25 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
 
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                        <Keyboard size={14} className="text-amber-500" /> Command Palette
+                                        <Keyboard size={14} className="text-amber-500" /> Command Palette & Navigation
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        Press <kbd className="px-1 bg-muted rounded text-[10px]">⌘ K</kbd> to open the Command Palette. 
-                                        From there, you can search for tables, run commands, or switch between connections without touching your mouse.
+                                        SqlForge is built for a keyboard-first workflow. Use these shortcuts to jump between contexts:
                                     </p>
+                                    <ul className="mt-2 space-y-2 list-none">
+                                        <li className="text-[11px] flex items-baseline gap-2">
+                                            <kbd className="px-1 bg-muted rounded text-[10px] min-w-8 text-center">⌘ K</kbd>
+                                            <span><strong>Command Palette</strong>: Search tables, run commands, and switch connections.</span>
+                                        </li>
+                                        <li className="text-[11px] flex items-baseline gap-2">
+                                            <kbd className="px-1 bg-muted rounded text-[10px] min-w-8 text-center">F9</kbd>
+                                            <span><strong>Focus Query Editor</strong>: Instantly jump back to your SQL input to refine your query.</span>
+                                        </li>
+                                        <li className="text-[11px] flex items-baseline gap-2">
+                                            <kbd className="px-1 bg-muted rounded text-[10px] min-w-8 text-center">F10</kbd>
+                                            <span><strong>Focus Result Grid</strong>: Shift focus to the data table to navigate rows using arrow keys.</span>
+                                        </li>
+                                    </ul>
                                 </section>
 
                                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
