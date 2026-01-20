@@ -37,6 +37,13 @@ def get_connections():
 def save_connection(config: ConnectionConfig):
     if not config.id:
         config.id = str(uuid.uuid4())
+    
+    # For SQLite, if database is missing, use filename from filepath
+    if config.type == "sqlite" and not config.database and config.filepath:
+        config.database = config.filepath.split("/")[-1] or "sqlite.db"
+    elif not config.database:
+        config.database = "default"
+        
     internal_db.save_connection(config)
     return config
 
@@ -68,7 +75,7 @@ def discover_local_databases():
                     "type": db_type,
                     "host": "localhost",
                     "port": port,
-                    "name": f"Discovered {db_type.capitalize()}"
+                    "name": f"Discovered {db_type.capitalize()} (localhost:{port})"
                 })
     return discovered
 

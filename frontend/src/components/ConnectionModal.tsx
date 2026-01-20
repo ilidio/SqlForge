@@ -146,8 +146,7 @@ export const ConnectionModal: React.FC<Props> = ({ isOpen, onClose, onSave, edit
                                 className="flex items-center gap-2 px-2 py-1.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] text-left transition-all"
                             >
                                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="font-bold uppercase">{found.type}</span>
-                                <span className="text-muted-foreground">:{found.port}</span>
+                                <span className="font-bold truncate" title={found.name}>{found.name}</span>
                             </button>
                         ))}
                     </div>
@@ -204,7 +203,15 @@ export const ConnectionModal: React.FC<Props> = ({ isOpen, onClose, onSave, edit
                 <Input 
                   id="filepath"
                   value={config.filepath} 
-                  onChange={e => setConfig({...config, filepath: e.target.value})}
+                  onChange={e => {
+                      const path = e.target.value;
+                      const fileName = path.split('/').pop() || '';
+                      setConfig(prev => ({
+                          ...prev, 
+                          filepath: path,
+                          name: (prev.name === 'New Connection' || prev.name === '') ? fileName || 'New Connection' : prev.name
+                      }));
+                  }}
                   placeholder="/Users/name/projects/data.db"
                 />
               </div>
