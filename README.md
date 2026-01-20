@@ -16,12 +16,12 @@ It is designed for backend engineers, data engineers, and DBAs who want speed, p
 
 ## 🚀 Recent Updates
 
-- **Modern SVG Logo:** High-resolution branding integrated across the UI, featuring a stylized database cylinder being forged on an anvil with an AI pulsing spark.
-- **Production-Grade Schema Sync:** Implemented a robust diffing engine using `sqlglot` for cross-dialect synchronization (e.g., SQLite to Postgres).
-- **StateManager Module:** New structured state management for persisting and restoring application snapshots.
-- **Monitoring Dashboard:** Integrated Prometheus and Grafana for professional-grade database and system monitoring.
-- **Refined Data Editor:** Spreadsheet-style grid with inline editing, batch updates, and keyboard navigation.
-- **Consolidated Scripts:** All management tools are now unified in the root `/scripts` directory.
+- **Unlocked Pro Features:** Transactional data editing, schema synchronization, and monitoring are now fully implemented and free for all users.
+- **Safe Data Editing:** Spreadsheet-style grid with inline editing, row deletions, batch updates, and optimistic concurrency protection.
+- **Transactional Logic:** Batch mutations are wrapped in SQL transactions—if one operation fails, the entire set rolls back safely.
+- **Context-Aware Navigation:** Menus and shortcuts (F9/F10) intelligently enable/disable based on your active connection and tab.
+- **Modern SVG Logo:** High-resolution branding integrated across the UI and Help system.
+- **Automated Test Lifecycle:** `test.sh` now manages the entire database environment (Docker + SQLite) fresh for every run.
 
 ---
 
@@ -29,11 +29,17 @@ It is designed for backend engineers, data engineers, and DBAs who want speed, p
 
 - **Multi-database Support:** Postgres, MySQL, SQLite, SQL Server, Oracle, MongoDB, Redis.
 - **AI SQL Assistant:** Schema-aware query generation powered by Google Gemini.
-- **Advanced Object Browser:** Grouped views for Tables, Views, Functions, Triggers, and Collections.
-- **Command Palette:** (⌘K / Ctrl+K) for lightning-fast navigation.
-- **Backup & Restore:** Easy wizards for managing database snapshots.
-- **Import/Export:** Support for CSV, JSON, and transpiled SQL Inserts.
-- **Dark/Light Themes:** Modern OKLCH-based theme engine with Radix UI components.
+- **Transactional Data Editor:** Edit cells or delete rows directly in the results grid with full rollback safety.
+- **Advanced Object Browser:** Grouped views for Tables, Views, Functions, Triggers, and Collections with right-click context menus.
+- **Keyboard-First Navigation:** 
+    - `⌘ K`: Command Palette
+    - `F9`: Focus Query Editor
+    - `F10`: Focus Result Grid
+    - `⌘ Enter`: Execute Query
+- **Export Wizard:** Multi-format export (CSV, JSON, SQL Insert statements) with detailed configuration options.
+- **Schema & Data Sync:** Robust diffing engine using `sqlglot` for cross-dialect synchronization.
+- **Monitoring Dashboard:** Integrated Prometheus and Grafana for professional-grade database diagnostics.
+- **Dark/Light Themes:** Modern OKLCH-based theme engine with beautiful `sonner` notifications.
 
 ---
 
@@ -41,8 +47,8 @@ It is designed for backend engineers, data engineers, and DBAs who want speed, p
 
 ```
 SqlForge/
-├── backend/        # FastAPI engine, DB drivers & Pro logic (Sync, Backup, State)
-├── frontend/       # React 19 + Tailwind 4 + Lucide UI
+├── backend/        # FastAPI engine, DB drivers & Core logic (Sync, Backup, State)
+├── frontend/       # React 19 + Tailwind 4 + Radix UI
 ├── scripts/        # Centralized management & automation scripts
 ├── tests/          # Docker DB suite & test cases
 ├── ARCHITECTURE.md # System design & sync logic
@@ -59,15 +65,21 @@ SqlForge/
 ./setup.sh
 ```
 
-### 2. Manage Databases
+### 2. Run Tests (Automated Environment)
+This script will stop existing DBs, clean local files, start fresh containers, and run all tests.
+```bash
+./test.sh
+```
+
+### 3. Manage Databases Manually
 ```bash
 ./scripts/start_dbs.sh   # Start Docker containers
 ./scripts/stop_dbs.sh    # Stop Docker containers
-./scripts/clean_dbs.sh   # Wipe Docker containers and volumes
-./scripts/remove_local_dbs.sh # Wipe local SQLite and metadata files
+./scripts/remove_local_dbs.sh # Wipe local SQLite databases (preserves metadata)
+./scripts/remove_local_dbs.sh --all # Full wipe including connection metadata
 ```
 
-### 3. Run Application
+### 4. Run Application
 In separate terminals:
 ```bash
 ./run_backend.sh
@@ -84,7 +96,7 @@ SqlForge is built around these principles:
 * Preview before mutate
 * Async everywhere
 * No blocking UI
-* Safe by default
+* Safe by default (Parameterized queries & Concurrency checks)
 
 ---
 
