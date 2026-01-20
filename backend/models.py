@@ -24,6 +24,7 @@ class TableInfo(BaseModel):
 class ColumnInfo(BaseModel):
     name: str
     type: str
+    nullable: bool
     primary_key: bool
 
 class ForeignKeyInfo(BaseModel):
@@ -51,3 +52,18 @@ class SyncRequest(BaseModel):
     source_connection_id: str
     target_connection_id: str
     dry_run: bool = True
+
+class ColumnDefinition(BaseModel):
+    name: str
+    type: str
+    nullable: bool = True
+    primary_key: bool = False
+    default: Optional[str] = None
+
+class AlterTableRequest(BaseModel):
+    connection_id: str
+    table_name: str
+    action: str # 'add_column', 'drop_column', 'rename_column', 'alter_column'
+    column_name: Optional[str] = None # Target column for drop/rename/alter
+    new_column_name: Optional[str] = None # For rename
+    column_def: Optional[ColumnDefinition] = None # For add/alter

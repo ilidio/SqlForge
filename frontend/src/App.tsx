@@ -4,6 +4,7 @@ import { QueryTab, type QueryTabHandle } from './components/QueryTab';
 import { ObjectBrowserTab } from './components/ObjectBrowserTab';
 import { ResultsTable, type ResultsTableHandle } from './components/ResultsTable';
 import { ERDiagramTab } from './components/ERDiagramTab';
+import { SchemaEditor } from './components/SchemaEditor';
 import { ConnectionModal } from './components/ConnectionModal';
 import { Logo } from './components/ui/Logo';
 import { MenuBar } from './components/MenuBar';
@@ -25,9 +26,9 @@ import { cn } from '@/lib/utils';
 interface Tab {
   id: string;
   title: string;
-  type: 'query' | 'table' | 'browser' | 'diagram';
+  type: 'query' | 'table' | 'browser' | 'diagram' | 'schema';
   connectionId: string;
-  content?: string; // For query: sql; For table: tableName
+  content?: string; // For query: sql; For table: tableName; For schema: tableName
   data?: {columns: string[], rows: Record<string, unknown>[], error: string | null};
 }
 
@@ -187,6 +188,24 @@ function App() {
         title: `ER Diagram: ${conn?.name || 'Unknown'} `,
         type: 'diagram',
         connectionId: connId
+    };
+    setTabs([...tabs, newTab]);
+    setActiveTabId(newTab.id);
+  };
+
+  const handleOpenSchema = (connId: string, tableName: string) => {
+    const existing = tabs.find(t => t.type === 'schema' && t.connectionId === connId && t.content === tableName);
+    if (existing) {
+        setActiveTabId(existing.id);
+        return;
+    }
+
+    const newTab: Tab = {
+        id: Math.random().toString(36).substring(7),
+        title: `Design: ${tableName}`,
+        type: 'schema',
+        connectionId: connId,
+        content: tableName
     };
     setTabs([...tabs, newTab]);
     setActiveTabId(newTab.id);
@@ -381,6 +400,7 @@ function App() {
             onOpenQuery={handleOpenQuery}
             onOpenBrowser={handleOpenBrowser}
             onOpenDiagram={handleOpenDiagram}
+            onOpenSchema={handleOpenSchema}
             onNewConnection={() => setIsModalOpen(true)}
             onEditConnection={(conn) => { setEditingConnection(conn); setIsModalOpen(true); }}
             onDeleteConnection={(id) => { setConnectionToDelete(id); setIsConfirmDeleteOpen(true); }}
@@ -462,6 +482,13 @@ function App() {
                   <ERDiagramTab 
                     key={activeTab.id} 
                     connectionId={activeTab.connectionId} 
+                  />
+                )}
+                {activeTab.type === 'schema' && (
+                  <SchemaEditor 
+                    key={activeTab.id}
+                    connectionId={activeTab.connectionId}
+                    tableName={activeTab.content || ''}
                   />
                 )}
               </>

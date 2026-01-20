@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { 
     ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent 
 } from '@/components/ui/context-menu';
-import { type LucideIcon, Moon, Sun, Edit2, Trash2, Copy, Database as DbIcon, Download, Info, Workflow, X, Upload } from 'lucide-react';
+import { type LucideIcon, Moon, Sun, Edit2, Trash2, Copy, Database as DbIcon, Download, Info, Workflow, X, Upload, Layout } from 'lucide-react';
 import { useTheme } from '@/lib/ThemeContext';
 import { toast } from 'sonner';
 
@@ -19,6 +19,7 @@ interface Props {
   onOpenQuery: (connId: string, sql?: string) => void;
   onOpenBrowser: (connId: string) => void;
   onOpenDiagram: (connId: string) => void;
+  onOpenSchema: (connId: string, tableName: string) => void;
   onNewConnection: () => void;
   onEditConnection: (conn: ConnectionConfig) => void;
   onDeleteConnection: (connId: string) => void;
@@ -48,6 +49,7 @@ export const Sidebar: React.FC<Props> = ({
     onOpenQuery, 
     onOpenBrowser, 
     onOpenDiagram,
+    onOpenSchema,
     onNewConnection, 
     onEditConnection,
     onDeleteConnection,
@@ -332,6 +334,9 @@ export const Sidebar: React.FC<Props> = ({
                                                                         <ContextMenuContent className="w-56">
                                                                             <ContextMenuItem onClick={() => onSelectTable(conn.id!, t.name)} className="gap-2 font-bold">
                                                                                 <DbIcon size={14} /> View Data
+                                                                            </ContextMenuItem>
+                                                                            <ContextMenuItem onClick={() => onOpenSchema(conn.id!, t.name)} className="gap-2">
+                                                                                <Layout size={14} /> Design Table
                                                                             </ContextMenuItem>
                                                                             <ContextMenuItem onClick={() => {
                                                                                 navigator.clipboard.writeText(t.name);

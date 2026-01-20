@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import time
 
 # Import from local modules
-from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema
+from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest
 import database
 import internal_db
 import google.generativeai as genai
@@ -117,6 +117,20 @@ def get_schema_details_endpoint(conn_id: str):
         return database.get_schema_details(config)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/connections/{conn_id}/schema/alter")
+def alter_table_endpoint(conn_id: str, request: AlterTableRequest):
+    if conn_id != request.connection_id:
+         raise HTTPException(status_code=400, detail="Connection ID mismatch")
+         
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+        
+    result = database.alter_table(config, request)
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result
 
 @app.post("/query", response_model=QueryResult)
 def run_query(query: QueryRequest):

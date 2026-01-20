@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
-from models import ConnectionConfig, TableInfo, ColumnInfo, ForeignKeyInfo, TableSchema
+from models import ConnectionConfig, TableInfo, ColumnInfo, ForeignKeyInfo, TableSchema, AlterTableRequest, ColumnDefinition
 import os
 import redis
 from pymongo import MongoClient
@@ -142,6 +142,7 @@ def get_schema_details(config: ConnectionConfig) -> list[TableSchema]:
                     columns.append(ColumnInfo(
                         name=col['name'],
                         type=str(col['type']),
+                        nullable=col.get('nullable', True),
                         primary_key=col['name'] in pks
                     ))
             except Exception as e:
@@ -369,3 +370,85 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
             
     except Exception as e:
         return {"success": False, "error": f"Database error: {str(e)}"}
+
+def alter_table(config: ConnectionConfig, request: AlterTableRequest):
+    if config.type in ['redis', 'mongodb']:
+        return {"success": False, "error": f"Schema modification not supported for {config.type}"}
+
+    engine = get_engine(config)
+    
+    try:
+        with engine.begin() as conn:
+            table = request.table_name
+            action = request.action
+            
+            # Basic sanitization (very rudimentary, relies on internal use)
+            # In a real app, use SQLAlchemy's schema manipulation tools (Alembic) or robust quoting.
+            
+            if action == 'add_column':
+                col_def = request.column_def
+                if not col_def:
+                    raise Exception("Missing column definition for add_column")
+                
+                type_str = col_def.type.upper()
+                nullable_str = "NULL" if col_def.nullable else "NOT NULL"
+                default_str = f"DEFAULT {col_def.default}" if col_def.default else ""
+                
+                sql = f"ALTER TABLE {table} ADD COLUMN {col_def.name} {type_str} {nullable_str} {default_str}"
+                conn.execute(text(sql))
+                
+            elif action == 'drop_column':
+                if not request.column_name:
+                    raise Exception("Missing column name for drop_column")
+                
+                # SQLite does not support DROP COLUMN in older versions, but modern ones (3.35+) do.
+                # Assuming modern SQLite or standard SQL DBs.
+                sql = f"ALTER TABLE {table} DROP COLUMN {request.column_name}"
+                conn.execute(text(sql))
+                
+            elif action == 'rename_column':
+                if not request.column_name or not request.new_column_name:
+                    raise Exception("Missing column names for rename_column")
+                
+                sql = f"ALTER TABLE {table} RENAME COLUMN {request.column_name} TO {request.new_column_name}"
+                conn.execute(text(sql))
+                
+            # 'alter_column' is complex across dialects (modifying type/constraints).
+            # We'll skip deep support for now or implement a basic "modify type" if dialect permits.
+            elif action == 'alter_column':
+                col_def = request.column_def
+                if not col_def or not request.column_name:
+                    raise Exception("Missing data for alter_column")
+                
+                type_str = col_def.type.upper()
+                nullable_str = "NULL" if col_def.nullable else "NOT NULL"
+                
+                if config.type == 'postgresql':
+                    # Postgres uses ALTER COLUMN ... TYPE ... and SET/DROP NOT NULL
+                    sql_type = f"ALTER TABLE {table} ALTER COLUMN {request.column_name} TYPE {type_str}"
+                    conn.execute(text(sql_type))
+                    
+                    null_action = "DROP NOT NULL" if col_def.nullable else "SET NOT NULL"
+                    sql_null = f"ALTER TABLE {table} ALTER COLUMN {request.column_name} {null_action}"
+                    conn.execute(text(sql_null))
+                    
+                elif config.type == 'mysql':
+                    # MySQL uses MODIFY COLUMN
+                    sql = f"ALTER TABLE {table} MODIFY COLUMN {request.column_name} {type_str} {nullable_str}"
+                    conn.execute(text(sql))
+                    
+                else:
+                    # Generic fallback or warning for SQLite
+                    if config.type == 'sqlite':
+                        raise Exception("SQLite does not support altering column types directly. Table recreation is required.")
+                    
+                    sql = f"ALTER TABLE {table} ALTER COLUMN {request.column_name} {type_str} {nullable_str}"
+                    conn.execute(text(sql))
+            
+            else:
+                 return {"success": False, "error": f"Unknown action: {action}"}
+                 
+        return {"success": True, "message": f"Schema change '{action}' applied successfully."}
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}

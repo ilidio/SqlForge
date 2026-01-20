@@ -23,6 +23,7 @@ export interface ForeignKeyInfo {
 export interface ColumnInfo {
   name: string;
   type: string;
+  nullable: boolean;
   primary_key: boolean;
 }
 
@@ -30,6 +31,23 @@ export interface TableSchema {
   name: string;
   columns: ColumnInfo[];
   foreign_keys: ForeignKeyInfo[];
+}
+
+export interface ColumnDefinition {
+  name: string;
+  type: string;
+  nullable: boolean;
+  primary_key: boolean;
+  default?: string;
+}
+
+export interface AlterTableRequest {
+  connection_id: string;
+  table_name: string;
+  action: 'add_column' | 'drop_column' | 'rename_column' | 'alter_column';
+  column_name?: string;
+  new_column_name?: string;
+  column_def?: ColumnDefinition;
 }
 
 export const api = {
@@ -41,6 +59,7 @@ export const api = {
   testConnection: (config: ConnectionConfig) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/test`, config).then(r => r.data),
   getTables: (connId: string) => axios.get<{name: string, type: string}[]>(`${API_URL}/connections/${connId}/tables`).then(r => r.data),
   getSchemaDetails: (connId: string) => axios.get<TableSchema[]>(`${API_URL}/connections/${connId}/schema`).then(r => r.data),
+  alterTable: (connId: string, request: AlterTableRequest) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/${connId}/schema/alter`, request).then(r => r.data),
   dropObject: (connId: string, name: string, type: string) => axios.post(`${API_URL}/connections/${connId}/drop`, { name, type }).then(r => r.data),
   importData: (connId: string, tableName: string, file: File, mode: 'append' | 'truncate', format: 'csv' | 'json') => {
       const formData = new FormData();
