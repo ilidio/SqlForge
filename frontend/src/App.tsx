@@ -225,6 +225,7 @@ function App() {
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden font-sans">
       <MenuBar 
         hasActiveTab={!!activeTabId}
+        activeTabType={activeTab?.type}
         hasSelectedConnection={!!selectedConnectionId}
         hasConnections={connections.length > 0}
         onAction={async (action) => {

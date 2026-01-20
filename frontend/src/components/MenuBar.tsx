@@ -18,11 +18,12 @@ interface MenuItem {
 interface MenuProps {
     onAction?: (action: string) => void;
     hasActiveTab?: boolean;
+    activeTabType?: string;
     hasSelectedConnection?: boolean;
     hasConnections?: boolean;
 }
 
-export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelectedConnection, hasConnections }) => {
+export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTabType, hasSelectedConnection, hasConnections }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
 
     const menus: Record<string, MenuItem[]> = {
@@ -43,8 +44,8 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
         View: [
             { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('open_browser'), disabled: !hasConnections },
             { label: 'Toggle Sidebar', onClick: () => onAction?.('toggle_sidebar') },
-            { label: 'Query Editor', shortcut: 'F9', onClick: () => onAction?.('focus_editor'), disabled: !hasActiveTab },
-            { label: 'Result Grid', shortcut: 'F10', onClick: () => onAction?.('focus_results'), disabled: !hasActiveTab },
+            { label: 'Query Editor', shortcut: 'F9', onClick: () => onAction?.('focus_editor'), disabled: activeTabType !== 'query' },
+            { label: 'Result Grid', shortcut: 'F10', onClick: () => onAction?.('focus_results'), disabled: !['query', 'table'].includes(activeTabType || '') },
             { divider: true },
             { label: 'Full Screen', shortcut: 'F11', onClick: () => onAction?.('toggle_fullscreen') },
             { label: 'Toggle Dark Mode', onClick: () => onAction?.('toggle_theme') },
