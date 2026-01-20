@@ -28,7 +28,6 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
     const menus: Record<string, MenuItem[]> = {
         File: [
             { label: 'New Connection...', icon: <Plus size={14}/>, shortcut: 'Ctrl+N', onClick: () => onAction?.('new_connection') },
-            { label: 'Open Connection...', icon: <FolderOpen size={14}/> },
             { divider: true },
             { label: 'New Query', icon: <Terminal size={14}/>, shortcut: 'Ctrl+Q', onClick: () => onAction?.('new_query'), disabled: !hasConnections && !hasActiveTab },
             { label: 'Save Query', icon: <Save size={14}/>, shortcut: 'Ctrl+S', disabled: !hasActiveTab },
