@@ -86,6 +86,21 @@ function App() {
           setIsSettingsOpen(true);
       }
 
+      // Undo (⌘Z)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+          if (activeTabId && tabs.find(t => t.id === activeTabId)?.type === 'query') {
+              // native usually works, but we can force it
+              activeQueryTabRef.current?.undo();
+          }
+      }
+
+      // Redo (⌘Y or ⌘⇧Z)
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+          if (activeTabId && tabs.find(t => t.id === activeTabId)?.type === 'query') {
+              activeQueryTabRef.current?.redo();
+          }
+      }
+
       // Execute Query (F5 or ⌘Enter)
       if (e.key === 'F5' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
           if (activeTabId && tabs.find(t => t.id === activeTabId)?.type === 'query') {
@@ -287,8 +302,8 @@ function App() {
           }
 
           if (action === 'format_sql') activeQueryTabRef.current?.formatSql();
-          if (action === 'undo') document.execCommand('undo');
-          if (action === 'redo') document.execCommand('redo');
+          if (action === 'undo') activeQueryTabRef.current?.undo();
+          if (action === 'redo') activeQueryTabRef.current?.redo();
 
           if (action === 'ai_copilot') {
               if (activeTab) {

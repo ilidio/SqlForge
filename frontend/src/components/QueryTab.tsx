@@ -1,4 +1,4 @@
-import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { api } from '../api';
 import { toast } from 'sonner';
 import { ResultsTable } from './ResultsTable';
@@ -18,10 +18,13 @@ export interface QueryTabHandle {
   formatSql: () => void;
   executeQuery: () => void;
   toggleAi: (open?: boolean) => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '' }, ref) => {
   const [sql, setSql] = useState(initialSql);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
   const [loading, setLoading] = useState(false);
   
@@ -74,10 +77,26 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     setShowAi(open ?? !showAi);
   };
 
+  const undo = () => {
+    if (textareaRef.current) {
+        textareaRef.current.focus();
+        document.execCommand('undo');
+    }
+  };
+
+  const redo = () => {
+    if (textareaRef.current) {
+        textareaRef.current.focus();
+        document.execCommand('redo');
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     formatSql,
     executeQuery: runQuery,
-    toggleAi
+    toggleAi,
+    undo,
+    redo
   }));
 
   const generateSQL = async () => {
@@ -156,7 +175,29 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     link.click();
   };
 
-  const inferredTable = sql.match(/FROM\s+([a-zA-Z0-9_]+)/i)?.[1];
+  const getInferredTable = (query: string) => {
+    const q = query.trim().toUpperCase();
+    // Heuristic: If it's a complex query, don't allow editing
+    if (q.includes(' JOIN ') || 
+        q.includes(' GROUP BY ') || 
+        q.includes(' UNION ') || 
+        q.includes(' DISTINCT ') || 
+        q.includes(' INTERSECT ') || 
+        q.includes(' EXCEPT ')) {
+      return undefined;
+    }
+    
+    // Check if there are multiple tables in FROM
+    const fromMatch = query.match(/FROM\s+([a-zA-Z0-9_,\s]+)/i);
+    if (fromMatch) {
+        const tablesStr = fromMatch[1];
+        if (tablesStr.includes(',')) return undefined; // Multiple tables
+        return tablesStr.trim().split(/\s+/)[0];
+    }
+    return undefined;
+  };
+
+  const inferredTable = getInferredTable(sql);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -274,6 +315,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
         
         <div className="flex-1 relative bg-background/50">
             <textarea
+                ref={textareaRef}
                 className="absolute inset-0 w-full h-full bg-transparent text-foreground p-4 font-mono text-sm resize-none outline-none leading-relaxed selection:bg-primary/20"
                 value={sql}
                 onChange={e => setSql(e.target.value)}

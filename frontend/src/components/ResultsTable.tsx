@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw } from 'lucide-react';
+import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2 } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { api } from '../api';
 
 interface Props {
   connectionId?: string;
@@ -19,12 +20,14 @@ interface Props {
 export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, onRefresh }) => {
   const [editingCell, setEditingCell] = useState<{rowIndex: number, column: string} | null>(null);
   const [changes, setChanges] = useState<Record<string, unknown>>({}); // Format: "rowIndex-column": value
+  const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
   const [editValue, setEditValue] = useState<string>('');
   const [applying, setApplying] = useState(false);
 
   // Reset changes when new data comes in
   useEffect(() => {
     setChanges({});
+    setDeletedRows(new Set());
     setEditingCell(null);
   }, [data]);
 
@@ -33,45 +36,53 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
     setApplying(true);
     
     try {
-        const sqlList: string[] = [];
+        const operations: any[] = [];
+        
+        // 1. Handle Deletions
+        Array.from(deletedRows).forEach(rowIndex => {
+            const originalRow = data.rows[rowIndex];
+            operations.push({
+                type: 'delete',
+                table: tableName,
+                where: originalRow
+            });
+        });
+
+        // 2. Handle Updates
         const rowIndices = new Set(Object.keys(changes).map(k => k.split('-')[0]));
         
-        for (const idxStr of rowIndices) {
+        for (const idxStr of Array.from(rowIndices)) {
             const rowIndex = parseInt(idxStr);
-            const originalRow = data.rows[rowIndex];
+            if (deletedRows.has(rowIndex)) continue;
             
-            // Collect all changed columns for this row
-            const updates: string[] = [];
+            const originalRow = data.rows[rowIndex];
+            const updates: Record<string, any> = {};
             Object.keys(changes).forEach(key => {
                 const [r, col] = key.split('-');
                 if (parseInt(r) === rowIndex) {
-                    const val = changes[key];
-                    const sqlVal = typeof val === 'string' ? `'${val.replace(/'/g, "''")}'` : (val === null ? 'NULL' : val);
-                    updates.push(`${col} = ${sqlVal}`);
+                    updates[col] = changes[key];
                 }
             });
 
-            if (updates.length > 0) {
-                // Determine WHERE clause (Prefer PK if known, but here we use all original columns for safety)
-                const conditions = data.columns.map(col => {
-                    const val = originalRow[col];
-                    if (val === null) return `${col} IS NULL`;
-                    const sqlVal = typeof val === 'string' ? `'${String(val).replace(/'/g, "''")}'` : val;
-                    return `${col} = ${sqlVal}`;
-                }).join(' AND ');
-
-                sqlList.push(`UPDATE ${tableName} SET ${updates.join(', ')} WHERE ${conditions};`);
+            if (Object.keys(updates).length > 0) {
+                operations.push({
+                    type: 'update',
+                    table: tableName,
+                    data: updates,
+                    where: originalRow
+                });
             }
         }
 
-        if (sqlList.length > 0) {
-            const res = await api.runBatchQueries(connectionId, sqlList);
+        if (operations.length > 0) {
+            const res = await api.runBatchQueries(connectionId, operations);
             const errors = res.results.filter(r => !r.success);
             if (errors.length > 0) {
-                toast.error(`Failed to apply some changes: ${errors[0].error}`);
+                toast.error(`Failed to apply changes: ${errors[0].error}`);
             } else {
                 toast.success("Changes applied successfully!");
                 setChanges({});
+                setDeletedRows(new Set());
                 onRefresh?.();
             }
         }
@@ -81,6 +92,36 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
         setApplying(false);
     }
   };
+
+  const toggleDeleteRow = (idx: number) => {
+      setDeletedRows(prev => {
+          const next = new Set(prev);
+          if (next.has(idx)) next.delete(idx);
+          else next.add(idx);
+          return next;
+      });
+  };
+
+  const startEditing = (rowIndex: number, column: string, value: unknown) => {
+    setEditingCell({ rowIndex, column });
+    setEditValue(String(value ?? ''));
+  };
+
+  const saveEdit = () => {
+    if (editingCell) {
+        const key = `${editingCell.rowIndex}-${editingCell.column}`;
+        setChanges(prev => ({ ...prev, [key]: editValue }));
+        setEditingCell(null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') saveEdit();
+    if (e.key === 'Escape') setEditingCell(null);
+  };
+
+  const hasChanges = Object.keys(changes).length > 0 || deletedRows.size > 0;
+  const isReadOnly = !tableName;
 
   if (!data) {
     return (
@@ -116,36 +157,16 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
       );
   }
 
-  const startEditing = (rowIndex: number, column: string, value: unknown) => {
-    setEditingCell({ rowIndex, column });
-    setEditValue(String(value ?? ''));
-  };
-
-  const saveEdit = () => {
-    if (editingCell) {
-        const key = `${editingCell.rowIndex}-${editingCell.column}`;
-        setChanges(prev => ({ ...prev, [key]: editValue }));
-        setEditingCell(null);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') saveEdit();
-    if (e.key === 'Escape') setEditingCell(null);
-  };
-
-  const hasChanges = Object.keys(changes).length > 0;
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {hasChanges && (
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
               <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
                   <RotateCcw size={14} />
-                  {Object.keys(changes).length} pending changes in this view
+                  {Object.keys(changes).length + deletedRows.size} pending changes in this view
               </div>
               <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setChanges({})} disabled={applying}>Discard</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => { setChanges({}); setDeletedRows(new Set()); }} disabled={applying}>Discard</Button>
                   <Button 
                     variant="default" 
                     size="sm" 
@@ -175,10 +196,32 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
-            {data.rows.map((row, i) => (
-              <tr key={i} className="hover:bg-primary/5 group transition-colors even:bg-muted/10">
-                <td className="p-2 border-r border-border/50 text-center text-muted-foreground/60 group-hover:text-primary font-medium">{i+1}</td>
-                {data.columns.map(col => {
+            {data.rows.map((row, i) => {
+              const isDeleted = deletedRows.has(i);
+              return (
+                <tr 
+                    key={i} 
+                    className={cn(
+                        "hover:bg-primary/5 group transition-colors even:bg-muted/10",
+                        isDeleted && "bg-destructive/10 hover:bg-destructive/20 line-through opacity-60"
+                    )}
+                >
+                  <td className="p-2 border-r border-border/50 text-center text-muted-foreground/60 font-medium group-hover:text-primary relative">
+                      {!isReadOnly && (
+                          <button 
+                            className={cn(
+                                "absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/80",
+                                isDeleted ? "text-primary" : "text-destructive"
+                            )}
+                            onClick={(e) => { e.stopPropagation(); toggleDeleteRow(i); }}
+                            title={isDeleted ? "Restore Row" : "Delete Row"}
+                          >
+                              {isDeleted ? <RotateCcw size={12} /> : <Trash2 size={12} />}
+                          </button>
+                      )}
+                      <span className={cn(isDeleted && "opacity-0")}>{i+1}</span>
+                  </td>
+                  {data.columns.map(col => {
                     const cellKey = `${i}-${col}`;
                     const isEditing = editingCell?.rowIndex === i && editingCell?.column === col;
                     const isChanged = changes[cellKey] !== undefined;
@@ -190,9 +233,10 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
                         key={col} 
                         className={cn(
                             "p-0 border-r border-border/50 text-foreground/90 transition-colors relative min-w-[80px]",
-                            isChanged && "bg-amber-500/10"
+                            isChanged && "bg-amber-500/10",
+                            isDeleted && "pointer-events-none"
                         )}
-                        onDoubleClick={() => startEditing(i, col, displayValue)}
+                        onDoubleClick={() => !isDeleted && startEditing(i, col, displayValue)}
                       >
                           {isEditing ? (
                               <input 
@@ -209,13 +253,14 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
                               </div>
                           )}
                           {isChanged && !isEditing && (
-                              <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-amber-500 rounded-bl-sm" title="Original: String(row[col])" />
+                              <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-amber-500 rounded-bl-sm" title={`Original: ${String(row[col])}`} />
                           )}
                       </td>
                     );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         <ScrollBar orientation="horizontal" />

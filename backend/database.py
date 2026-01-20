@@ -119,18 +119,53 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     
     return items
 
-def execute_mutation(config: ConnectionConfig, query_str: str):
+def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
     if config.type in ['redis', 'mongodb']:
-        return {"success": False, "error": f"Mutations not yet supported for {config.type}"}
+        return [{"success": False, "error": f"Batch operations not yet supported for {config.type}"}]
     
     engine = get_engine(config)
+    results = []
+    
     try:
-        with engine.connect() as conn:
-            conn.execute(text(query_str))
-            conn.commit()
-            return {"success": True, "error": None}
+        with engine.begin() as conn: # Automatically starts and commits/rolls back a transaction
+            for op in operations:
+                op_type = op.get("type") # 'update' or 'delete'
+                table = op.get("table")
+                data = op.get("data", {}) # New values for update
+                where = op.get("where", {}) # Conditions
+                
+                if op_type == 'update':
+                    set_clause = ", ".join([f"{col} = :{col}_val" for col in data.keys()])
+                    where_clause = " AND ".join([
+                        f"{col} IS NULL" if val is None else f"{col} = :{col}_where" 
+                        for col, val in where.items()
+                    ])
+                    
+                    params = {f"{k}_val": v for k, v in data.items()}
+                    params.update({f"{k}_where": v for k, v in where.items() if v is not None})
+                    
+                    stmt = text(f"UPDATE {table} SET {set_clause} WHERE {where_clause}")
+                    res = conn.execute(stmt, params)
+                    if res.rowcount == 0:
+                        raise Exception(f"Update failed: Row in {table} was modified or deleted by another user.")
+                        
+                elif op_type == 'delete':
+                    where_clause = " AND ".join([
+                        f"{col} IS NULL" if val is None else f"{col} = :{col}_where" 
+                        for col, val in where.items()
+                    ])
+                    params = {f"{k}_where": v for k, v in where.items() if v is not None}
+                    
+                    stmt = text(f"DELETE FROM {table} WHERE {where_clause}")
+                    res = conn.execute(stmt, params)
+                    if res.rowcount == 0:
+                        raise Exception(f"Delete failed: Row in {table} no longer exists or was modified.")
+                
+                results.append({"success": True, "error": None})
+        return results
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        # If any operation fails, the 'with engine.begin()' block rolls back EVERYTHING
+        return [{"success": False, "error": str(e)}]
 
 def execute_query(config: ConnectionConfig, query_str: str):
     if config.type == 'redis':
