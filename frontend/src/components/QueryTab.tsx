@@ -24,7 +24,81 @@ export interface QueryTabHandle {
   focusResults: () => void;
   saveQuery: () => void;
 }
-...
+
+export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '' }, ref) => {
+  const [sql, setSql] = useState(initialSql);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const resultsTableRef = useRef<ResultsTableHandle>(null);
+  const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
+  const [loading, setLoading] = useState(false);
+  
+  // AI State
+  const [showAi, setShowAi] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [aiModel, setAiModel] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    const savedModel = localStorage.getItem('ai_model');
+    if (savedKey) setApiKey(savedKey);
+    if (savedModel) setAiModel(savedModel);
+  }, []);
+
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('gemini_api_key', key);
+  };
+
+  const saveAiModel = (model: string) => {
+    setAiModel(model);
+    localStorage.setItem('ai_model', model);
+  };
+
+  const runQuery = async () => {
+    setLoading(true);
+    try {
+      const res = await api.runQuery(connectionId, sql);
+      setResult(res);
+    } catch (e: unknown) {
+      setResult({ columns: [], rows: [], error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatSql = () => {
+    try {
+      const formatted = format(sql, { language: 'sql', keywordCase: 'upper' });
+      setSql(formatted);
+    } catch (e) {
+      console.error("Format error", e);
+    }
+  };
+
+  const toggleAi = (open?: boolean) => {
+    setShowAi(open ?? !showAi);
+  };
+
+  const undo = () => {
+    if (textareaRef.current) {
+        textareaRef.current.focus();
+        document.execCommand('undo');
+    }
+  };
+
+  const redo = () => {
+    if (textareaRef.current) {
+        textareaRef.current.focus();
+        document.execCommand('redo');
+    }
+  };
+
+  const focus = () => {
+    textareaRef.current?.focus();
+  };
+
   const focusResults = () => {
     resultsTableRef.current?.focus();
   };
@@ -144,7 +218,7 @@ export interface QueryTabHandle {
     }
     
     // Check if there are multiple tables in FROM
-    const fromMatch = query.match(/FROM\s+([a-zA-Z0-9_,\s]+)/i);
+    const fromMatch = query.match(/FROM\s+([a-zA-Z0-9_,\\s]+)/i);
     if (fromMatch) {
         const tablesStr = fromMatch[1];
         if (tablesStr.includes(',')) return undefined; // Multiple tables
