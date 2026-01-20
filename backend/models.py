@@ -18,7 +18,7 @@ class QueryRequest(BaseModel):
 
 class TableInfo(BaseModel):
     name: str
-    schema: Optional[str] = None
+    db_schema: Optional[str] = None
     type: str # 'table' or 'view'
 
 class ColumnInfo(BaseModel):

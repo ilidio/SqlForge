@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uuid
 from typing import List, Dict, Any
@@ -279,6 +280,28 @@ async def import_table_data(
         raise HTTPException(status_code=500, detail=result["error"])
         
     return result
+
+@app.get("/connections/{conn_id}/export/{table_name}")
+def export_table_data(conn_id: str, table_name: str, format: str = "csv"):
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    try:
+        gen = database.stream_export_data(config, table_name, format)
+        
+        media_types = {
+            "csv": "text/csv",
+            "json": "application/json"
+        }
+        
+        return StreamingResponse(
+            gen, 
+            media_type=media_types.get(format, "text/plain"),
+            headers={"Content-Disposition": f"attachment; filename={table_name}.{format}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

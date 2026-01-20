@@ -70,6 +70,10 @@ export const api = {
           headers: { 'Content-Type': 'multipart/form-data' }
       }).then(r => r.data);
   },
+  getExportUrl: (connId: string, tableName: string, format: 'csv' | 'json' | 'sql') => {
+      // Return the direct URL for streaming
+      return `${API_URL}/connections/${connId}/export/${tableName}?format=${format}`;
+  },
   runQuery: (connId: string, sql: string) => axios.post<{columns: string[], rows: Record<string, unknown>[], error: string | null}>(`${API_URL}/query`, { connection_id: connId, sql }).then(r => r.data),
   runBatchQueries: (connId: string, operations: any[]) => axios.post<{results: {success: boolean, error: string | null}[]}>(`${API_URL}/query/batch`, { connection_id: connId, operations: operations }).then(r => r.data),
   getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),

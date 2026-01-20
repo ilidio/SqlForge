@@ -96,6 +96,7 @@ export default function ImportWizard({ open, onOpenChange, connectionId, tableNa
                                     className="hidden" 
                                     accept=".csv,.json"
                                     onChange={handleFileChange}
+                                    data-testid="file-input"
                                 />
                                 {file ? (
                                     <>

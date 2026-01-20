@@ -315,61 +315,98 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
         return {"success": False, "error": f"Import not yet supported for {config.type}"}
 
     engine = get_engine(config)
-    
-    # 1. Parse Data
-    data_rows = []
-    columns = []
+    batch_size = 1000
     
     try:
-        if file_format == 'csv':
-            # Decode bytes to string
-            content_str = file_contents.decode('utf-8')
-            csv_reader = csv.DictReader(io.StringIO(content_str))
-            columns = csv_reader.fieldnames
-            for row in csv_reader:
-                # Handle basic type conversion if needed (e.g. empty string to None)
-                cleaned_row = {k: (None if v == '' else v) for k, v in row.items()}
-                data_rows.append(cleaned_row)
-                
-        elif file_format == 'json':
-            content_str = file_contents.decode('utf-8')
-            data_rows = json.loads(content_str)
-            if isinstance(data_rows, list) and len(data_rows) > 0:
-                columns = list(data_rows[0].keys())
-            else:
-                return {"success": False, "error": "Invalid JSON format. Expected list of objects."}
-        else:
-            return {"success": False, "error": "Unsupported file format"}
-            
-    except Exception as e:
-        return {"success": False, "error": f"Failed to parse file: {str(e)}"}
+        # 1. Prepare Data Generator
+        def get_rows():
+            if file_format == 'csv':
+                content_str = file_contents.decode('utf-8')
+                csv_reader = csv.DictReader(io.StringIO(content_str))
+                for row in csv_reader:
+                    yield {k: (None if v == '' else v) for k, v in row.items()}
+            elif file_format == 'json':
+                content_str = file_contents.decode('utf-8')
+                data = json.loads(content_str)
+                if isinstance(data, list):
+                    for row in data:
+                        yield row
+                else:
+                    raise Exception("Invalid JSON format. Expected list of objects.")
 
-    if not data_rows:
-        return {"success": True, "message": "No data found in file"}
-
-    # 2. Insert Data
-    try:
+        # 2. Execute in Batches
+        row_gen = get_rows()
+        total_imported = 0
+        
         with engine.begin() as conn:
             if mode == 'truncate':
                 conn.execute(text(f"DELETE FROM {table_name}"))
             
-            # Use SQLAlchemy's insert
-            # We construct a parameterized insert statement
-            # INSERT INTO table (col1, col2) VALUES (:col1, :col2)
-            
-            # Naive approach: Insert one by one or in chunks. SQLAlchemy can handle list of dicts.
-            # However, we must ensure the dict keys match table columns.
-            # For this prototype, we assume the file headers MATCH the table columns.
-            
-            placeholders = ", ".join([f":{col}" for col in columns])
-            stmt = text(f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})")
-            
-            conn.execute(stmt, data_rows)
-            
-        return {"success": True, "message": f"Successfully imported {len(data_rows)} rows into {table_name}"}
+            while True:
+                batch = []
+                try:
+                    for _ in range(batch_size):
+                        batch.append(next(row_gen))
+                except StopIteration:
+                    pass
+                
+                if not batch:
+                    break
+                
+                columns = list(batch[0].keys())
+                placeholders = ", ".join([f":{col}" for col in columns])
+                stmt = text(f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})")
+                conn.execute(stmt, batch)
+                total_imported += len(batch)
+                
+        return {"success": True, "message": f"Successfully imported {total_imported} rows into {table_name}"}
             
     except Exception as e:
         return {"success": False, "error": f"Database error: {str(e)}"}
+
+def stream_export_data(config: ConnectionConfig, table_name: str, file_format: str):
+    if config.type in ['redis', 'mongodb']:
+        raise Exception(f"Export not yet supported for {config.type}")
+
+    engine = get_engine(config)
+    
+    def generate():
+        with engine.connect() as conn:
+            # For massive tables, we should use stream_results=True if supported by dialect
+            result = conn.execution_options(stream_results=True).execute(text(f"SELECT * FROM {table_name}"))
+            columns = result.keys()
+            
+            if file_format == 'csv':
+                # Header
+                yield ",".join(columns) + "\n"
+                for row in result:
+                    # Very basic CSV quoting
+                    values = []
+                    for val in row:
+                        s = str(val) if val is not None else ""
+                        if "," in s or '"' in s or "\n" in s:
+                            s = '"' + s.replace('"', '""') + '"'
+                        values.append(s)
+                    yield ",".join(values) + "\n"
+            
+            elif file_format == 'json':
+                yield "[\n"
+                first = True
+                for row in result:
+                    if not first:
+                        yield ",\n"
+                    # Create dict for JSON
+                    row_dict = dict(row._mapping)
+                    # Convert non-serializable objects (dates, etc)
+                    for k, v in row_dict.items():
+                        if hasattr(v, 'isoformat'):
+                            row_dict[k] = v.isoformat()
+                    
+                    yield json.dumps(row_dict)
+                    first = False
+                yield "\n]"
+
+    return generate()
 
 def alter_table(config: ConnectionConfig, request: AlterTableRequest):
     if config.type in ['redis', 'mongodb']:

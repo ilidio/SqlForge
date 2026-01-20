@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Download, FileSpreadsheet, FileJson, FileCode, CheckCircle2, ChevronRight, Settings2, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '../api';
+import { toast } from 'sonner';
 
 interface ExportWizardProps {
     open: boolean;
@@ -33,29 +35,33 @@ export default function ExportWizard({ open, onOpenChange, connectionId, tableNa
     ];
 
     const handleStartExport = () => {
+        if (!connectionId || !tableName) return;
+        
         setExporting(true);
         setStep(3);
-        setStatus('Connecting to data source...');
+        setStatus('Preparing stream...');
+        setProgress(30);
         
-        const intervals = [
-            { p: 30, m: 'Fetching records from database...' },
-            { p: 60, m: `Formatting as ${format.toUpperCase()}...` },
-            { p: 90, m: 'Generating file download...' },
-            { p: 100, m: 'Export completed successfully!' }
-        ];
-
-        let i = 0;
-        const timer = setInterval(() => {
-            if (i < intervals.length) {
-                setProgress(intervals[i].p);
-                setStatus(intervals[i].m);
-                i++;
-            } else {
-                clearInterval(timer);
-                setExporting(false);
-                // In a real implementation, we would call the actual download logic here
-            }
-        }, 800);
+        try {
+            const url = api.getExportUrl(connectionId, tableName, format);
+            
+            // Trigger download by creating a hidden link
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${tableName}.${format}`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setProgress(100);
+            setStatus('Export stream started!');
+            toast.success("Export started. Check your browser downloads.");
+        } catch (e: any) {
+            setStatus('Export failed.');
+            toast.error(`Export Error: ${e.message}`);
+        } finally {
+            setExporting(false);
+        }
     };
 
     return (
