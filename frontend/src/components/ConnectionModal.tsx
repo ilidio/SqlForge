@@ -138,8 +138,9 @@ export const ConnectionModal: React.FC<Props> = ({ isOpen, onClose, onSave, edit
                                     setConfig(prev => ({
                                         ...prev,
                                         type: found.type as ConnectionConfig['type'],
-                                        host: found.host,
-                                        port: found.port,
+                                        host: found.host || prev.host,
+                                        port: found.port || prev.port,
+                                        filepath: found.filepath || prev.filepath,
                                         name: found.name || prev.name
                                     }));
                                 }}

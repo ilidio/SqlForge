@@ -55,7 +55,21 @@ def delete_connection_endpoint(conn_id: str):
 @app.get("/connections/discover")
 def discover_local_databases():
     import socket
+    import os
     
+    discovered = []
+    
+    # 1. Discover SQLite files in backend directory
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    for file in os.listdir(backend_dir):
+        if file.endswith(".db") and file != "sqlforge_metadata.db":
+            discovered.append({
+                "type": "sqlite",
+                "filepath": os.path.join(backend_dir, file),
+                "name": f"Discovered SQLite ({file})"
+            })
+
+    # 2. Discover networked databases via port scanning
     common_ports = {
         5432: "postgresql",
         3306: "mysql",
