@@ -162,11 +162,6 @@ function App() {
         };
         setTabs([...tabs, newTab]);
         setActiveTabId(newTab.id);
-          if (conn) {
-              handleOpenQuery(conn.id, sql);
-          } else {
-              toast.error("Error opening Object Browser");
-          }
       } catch {
           toast.error("Error opening Object Browser");
       }
