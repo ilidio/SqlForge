@@ -305,6 +305,7 @@ function App() {
           if (action === 'format_sql') activeQueryTabRef.current?.formatSql();
           if (action === 'undo') activeQueryTabRef.current?.undo();
           if (action === 'redo') activeQueryTabRef.current?.redo();
+          if (action === 'focus_editor') activeQueryTabRef.current?.focus();
 
           if (action === 'ai_copilot') {
               if (activeTab) {

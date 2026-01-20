@@ -20,6 +20,7 @@ export interface QueryTabHandle {
   toggleAi: (open?: boolean) => void;
   undo: () => void;
   redo: () => void;
+  focus: () => void;
 }
 
 export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '' }, ref) => {
@@ -91,12 +92,17 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     }
   };
 
+  const focus = () => {
+    textareaRef.current?.focus();
+  };
+
   useImperativeHandle(ref, () => ({
     formatSql,
     executeQuery: runQuery,
     toggleAi,
     undo,
-    redo
+    redo,
+    focus
   }));
 
   const generateSQL = async () => {
