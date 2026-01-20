@@ -207,6 +207,7 @@ function App() {
   };
 
   const activeTab = tabs.find(t => t.id === activeTabId);
+  const effectiveConnectionId = activeTab?.connectionId || selectedConnectionId;
 
   const handleDeleteConfirm = async () => {
       if (!connectionToDelete) return;
@@ -243,11 +244,11 @@ function App() {
       <MenuBar 
         hasActiveTab={!!activeTabId}
         activeTabType={activeTab?.type}
-        hasSelectedConnection={!!selectedConnectionId}
+        hasSelectedConnection={!!effectiveConnectionId}
         hasConnections={connections.length > 0}
         onAction={async (action) => {
-          if (action === 'new_query' && (activeTab || selectedConnectionId)) {
-              handleOpenQuery(activeTab?.connectionId || selectedConnectionId!);
+          if (action === 'new_query' && effectiveConnectionId) {
+              handleOpenQuery(effectiveConnectionId);
           }
           if (action === 'new_connection') {
               setEditingConnection(null);
