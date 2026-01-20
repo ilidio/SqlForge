@@ -33,8 +33,6 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, hasSelect
             { label: 'Save Query', icon: <Save size={14}/>, shortcut: 'Ctrl+S', disabled: !hasActiveTab },
             { divider: true },
             { label: 'Settings', icon: <Settings size={14}/>, shortcut: 'Ctrl+,', onClick: () => onAction?.('open_settings') },
-            { divider: true },
-            { label: 'Close Tab', shortcut: 'Ctrl+W', onClick: () => onAction?.('close_tab'), disabled: !hasActiveTab },
         ],
         Edit: [
             { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => onAction?.('undo'), disabled: !hasActiveTab },

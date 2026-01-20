@@ -245,10 +245,6 @@ function App() {
           if (action === 'open_shortcuts') { setHelpTab('shortcuts'); setIsHelpOpen(true); }
           if (action === 'open_about') { setHelpTab('about'); setIsHelpOpen(true); }
           
-          if (action === 'close_tab' && activeTabId) {
-              closeTab(activeTabId);
-          }
-
           if (action === 'test_connection' && (selectedConnectionId || activeTab?.connectionId)) {
               const connId = activeTab?.connectionId || selectedConnectionId;
               try {
