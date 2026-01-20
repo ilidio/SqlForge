@@ -339,6 +339,8 @@ function App() {
             onOpenQuery={handleOpenQuery}
             onOpenBrowser={handleOpenBrowser}
             onNewConnection={() => setIsModalOpen(true)}
+            onEditConnection={(conn) => { setEditingConnection(conn); setIsModalOpen(true); }}
+            onDeleteConnection={(id) => { setConnectionToDelete(id); setIsConfirmDeleteOpen(true); }}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectConnection={setSelectedConnectionId}
             onRefresh={() => setRefreshTrigger(prev => prev + 1)}

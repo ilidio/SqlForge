@@ -7,14 +7,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { type LucideIcon, Moon, Sun } from 'lucide-react';
+import { 
+    ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent 
+} from '@/components/ui/context-menu';
+import { type LucideIcon, Moon, Sun, Edit2, Trash2, Copy, PlayCircle, Database as DbIcon, Download, Info } from 'lucide-react';
 import { useTheme } from '@/lib/ThemeContext';
+import { toast } from 'sonner';
 
 interface Props {
   onSelectTable: (connId: string, tableName: string) => void;
   onOpenQuery: (connId: string, sql?: string) => void;
   onOpenBrowser: (connId: string) => void;
   onNewConnection: () => void;
+  onEditConnection: (conn: ConnectionConfig) => void;
+  onDeleteConnection: (connId: string) => void;
   onOpenSettings: () => void;
   onSelectConnection?: (connId: string) => void;
   onRefresh?: () => void;
@@ -156,53 +162,89 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
 
                         return (
                             <div key={conn.id} className="group/conn px-1">
-                                <div 
-                                    className={cn(
-                                        "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-all border border-transparent",
-                                        isSelected 
-                                            ? "bg-primary/10 text-primary border-l-2 border-primary rounded-l-none" 
-                                            : isExpanded 
-                                                ? "bg-sidebar-accent text-sidebar-accent-foreground" 
-                                                : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-                                    )}
-                                    onClick={() => toggleConnection(conn)}
-                                    onDoubleClick={() => onOpenBrowser?.(conn.id!)}
-                                >
-                                    <div className="w-4 flex justify-center">
-                                        {isExpanded ? <ChevronDown size={12} className={cn(isSelected ? "text-primary" : "text-muted-foreground")} /> : <ChevronRight size={12} className={cn(isSelected ? "text-primary/50" : "text-muted-foreground/50")} />}
-                                    </div>
-                                    <div className="relative">
-                                        <Icon size={14} className={cn(isSelected ? "text-primary" : IconInfo.color, "shrink-0")} />
-                                        {connectedIds.has(conn.id!) && (
-                                            <div className={cn(
-                                                "absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border shadow-sm",
-                                                isSelected ? "bg-primary border-background" : "bg-emerald-500 border-sidebar"
-                                            )} />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0 flex flex-col">
-                                        <span className={cn(
-                                            "truncate text-xs leading-none",
-                                            isSelected ? "font-bold" : "font-medium"
-                                        )}>{conn.name}</span>
-                                        {conn.type === 'sqlite' && conn.filepath && (
-                                            <span className="truncate text-[9px] text-muted-foreground/60 font-mono mt-0.5" title={conn.filepath}>
-                                                {conn.filepath.split('/').pop()}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon-sm" 
-                                        className={cn(
-                                            "h-5 w-5 opacity-0 group-hover/conn:opacity-100",
-                                            isSelected ? "hover:bg-primary/10 text-primary" : "hover:bg-sidebar-accent"
-                                        )}
-                                        onClick={(e) => { e.stopPropagation(); onOpenQuery(conn.id!); }}
-                                    >
-                                        <Plus size={10} />
-                                    </Button>
-                                </div>
+                                <ContextMenu>
+                                    <ContextMenuTrigger>
+                                        <div 
+                                            className={cn(
+                                                "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-all border border-transparent",
+                                                isSelected 
+                                                    ? "bg-primary/10 text-primary border-l-2 border-primary rounded-l-none" 
+                                                    : isExpanded 
+                                                        ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+                                                        : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                                            )}
+                                            onClick={() => toggleConnection(conn)}
+                                            onDoubleClick={() => onOpenBrowser?.(conn.id!)}
+                                        >
+                                            <div className="w-4 flex justify-center">
+                                                {isExpanded ? <ChevronDown size={12} className={cn(isSelected ? "text-primary" : "text-muted-foreground")} /> : <ChevronRight size={12} className={cn(isSelected ? "text-primary/50" : "text-muted-foreground/50")} />}
+                                            </div>
+                                            <div className="relative">
+                                                <Icon size={14} className={cn(isSelected ? "text-primary" : IconInfo.color, "shrink-0")} />
+                                                {connectedIds.has(conn.id!) && (
+                                                    <div className={cn(
+                                                        "absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border shadow-sm",
+                                                        isSelected ? "bg-primary border-background" : "bg-emerald-500 border-sidebar"
+                                                    )} />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col">
+                                                <span className={cn(
+                                                    "truncate text-xs leading-none",
+                                                    isSelected ? "font-bold" : "font-medium"
+                                                )}>{conn.name}</span>
+                                                {conn.type === 'sqlite' && conn.filepath && (
+                                                    <span className="truncate text-[9px] text-muted-foreground/60 font-mono mt-0.5" title={conn.filepath}>
+                                                        {conn.filepath.split('/').pop()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon-sm" 
+                                                className={cn(
+                                                    "h-5 w-5 opacity-0 group-hover/conn:opacity-100",
+                                                    isSelected ? "hover:bg-primary/10 text-primary" : "hover:bg-sidebar-accent"
+                                                )}
+                                                onClick={(e) => { e.stopPropagation(); onOpenQuery(conn.id!); }}
+                                            >
+                                                <Plus size={10} />
+                                            </Button>
+                                        </div>
+                                    </ContextMenuTrigger>
+                                    <ContextMenuContent className="w-48">
+                                        <ContextMenuItem onClick={() => onOpenQuery(conn.id!)} className="gap-2">
+                                            <Terminal size={14} /> New Query Tab
+                                        </ContextMenuItem>
+                                        <ContextMenuItem onClick={() => onOpenBrowser(conn.id!)} className="gap-2">
+                                            <DbIcon size={14} /> Open Browser
+                                        </ContextMenuItem>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuItem onClick={() => onEditConnection(conn)} className="gap-2">
+                                            <Edit2 size={14} /> Edit Connection
+                                        </ContextMenuItem>
+                                        <ContextMenuItem onClick={() => {
+                                            const cloned = { ...conn, id: undefined, name: `${conn.name} (Copy)` };
+                                            onEditConnection(cloned);
+                                        }} className="gap-2">
+                                            <Copy size={14} /> Duplicate
+                                        </ContextMenuItem>
+                                        <ContextMenuItem onClick={() => onRefresh?.()} className="gap-2">
+                                            <RefreshCw size={14} /> Refresh Metadata
+                                        </ContextMenuItem>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuItem onClick={() => onDeleteConnection(conn.id!)} className="text-destructive gap-2 focus:text-destructive">
+                                            <Trash2 size={14} /> Delete Connection
+                                        </ContextMenuItem>
+                                        <ContextMenuSeparator />
+                                        <ContextMenuItem onClick={() => {
+                                            navigator.clipboard.writeText(conn.id!);
+                                            toast.success("Connection ID copied to clipboard");
+                                        }} className="gap-2 text-[10px] opacity-60">
+                                            <Info size={12} /> Copy Connection ID
+                                        </ContextMenuItem>
+                                    </ContextMenuContent>
+                                </ContextMenu>
                                 
                                 {isExpanded && (
                                     <div className="ml-4 pl-2 border-l border-sidebar-border mt-0.5 space-y-2">
@@ -252,15 +294,49 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
                                                         {isGroupExpanded && (
                                                             <div className="mt-1 space-y-0.5">
                                                                 {typeItems.map(t => (
-                                                                    <div 
-                                                                        key={t.name} 
-                                                                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-sidebar-accent/50 rounded-md cursor-pointer text-muted-foreground hover:text-foreground text-xs transition-all group/table"
-                                                                        onClick={() => onSelectTable(conn.id!, t.name)}
-                                                                        onDoubleClick={() => onSelectTable(conn.id!, t.name)}
-                                                                    >
-                                                                        <div className="shrink-0">{getIconForTable(t.type)}</div>
-                                                                        <span className="truncate flex-1">{t.name}</span>
-                                                                    </div>
+                                                                    <ContextMenu key={t.name}>
+                                                                        <ContextMenuTrigger>
+                                                                            <div 
+                                                                                className="flex items-center gap-2 px-2 py-1.5 hover:bg-sidebar-accent/50 rounded-md cursor-pointer text-muted-foreground hover:text-foreground text-xs transition-all group/table"
+                                                                                onClick={() => onSelectTable(conn.id!, t.name)}
+                                                                                onDoubleClick={() => onSelectTable(conn.id!, t.name)}
+                                                                            >
+                                                                                <div className="shrink-0">{getIconForTable(t.type)}</div>
+                                                                                <span className="truncate flex-1">{t.name}</span>
+                                                                            </div>
+                                                                        </ContextMenuTrigger>
+                                                                        <ContextMenuContent className="w-56">
+                                                                            <ContextMenuItem onClick={() => onSelectTable(conn.id!, t.name)} className="gap-2 font-bold">
+                                                                                <DbIcon size={14} /> View Data
+                                                                            </ContextMenuItem>
+                                                                            <ContextMenuItem onClick={() => {
+                                                                                navigator.clipboard.writeText(t.name);
+                                                                                toast.success("Table name copied");
+                                                                            }} className="gap-2">
+                                                                                <Copy size={14} /> Copy Name
+                                                                            </ContextMenuItem>
+                                                                            <ContextMenuSeparator />
+                                                                            <ContextMenuSub>
+                                                                                <ContextMenuSubTrigger className="gap-2">
+                                                                                    <FileText size={14} /> Generate SQL
+                                                                                </ContextMenuSubTrigger>
+                                                                                <ContextMenuSubContent className="w-48">
+                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `SELECT * FROM ${t.name} LIMIT 100;`)}>SELECT Statement</ContextMenuItem>
+                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `INSERT INTO ${t.name} (...) VALUES (...);`)}>INSERT Statement</ContextMenuItem>
+                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `UPDATE ${t.name} SET ... WHERE ...;`)}>UPDATE Statement</ContextMenuItem>
+                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `DELETE FROM ${t.name} WHERE ...;`)}>DELETE Statement</ContextMenuItem>
+                                                                                </ContextMenuSubContent>
+                                                                            </ContextMenuSub>
+                                                                            <ContextMenuSeparator />
+                                                                            <ContextMenuItem className="gap-2" onClick={() => toast.info("Export Wizard opening...")}>
+                                                                                <Download size={14} /> Export Data...
+                                                                            </ContextMenuItem>
+                                                                            <ContextMenuSeparator />
+                                                                            <ContextMenuItem className="text-destructive gap-2 focus:text-destructive" onClick={() => toast.warning(`Drop Table ${t.name}: Action not yet implemented`)}>
+                                                                                <Trash2 size={14} /> Drop {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                                            </ContextMenuItem>
+                                                                        </ContextMenuContent>
+                                                                    </ContextMenu>
                                                                 ))}
                                                             </div>
                                                         )}
