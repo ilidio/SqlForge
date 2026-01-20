@@ -41,7 +41,22 @@ const DB_ICONS: Record<string, { icon: LucideIcon, color: string }> = {
     mongodb: { icon: Box, color: 'text-emerald-500' },
 };
 
-export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBrowser, onNewConnection, onOpenSettings, onSelectConnection, onRefresh, connections, loading, selectedConnectionId }) => {
+export const Sidebar: React.FC<Props> = ({ 
+    onSelectTable, 
+    onOpenQuery, 
+    onOpenBrowser, 
+    onNewConnection, 
+    onEditConnection,
+    onDeleteConnection,
+    onExportTable,
+    onDropObject,
+    onOpenSettings, 
+    onSelectConnection, 
+    onRefresh, 
+    connections, 
+    loading, 
+    selectedConnectionId 
+}) => {
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('connections');
   const [history, setHistory] = useState<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>([]);
