@@ -55,6 +55,8 @@ function App() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [connectionToDelete, setConnectionToDelete] = useState<string | null>(null);
+  const [isConfirmDropOpen, setIsConfirmDropOpen] = useState(false);
+  const [objectToDrop, setObjectToDrop] = useState<{connId: string, name: string, type: string} | null>(null);
 
   useEffect(() => {
     setLoadingConnections(true);
@@ -221,6 +223,21 @@ function App() {
       }
   };
 
+  const handleDropConfirm = async () => {
+      if (!objectToDrop) return;
+      try {
+          await api.dropObject(objectToDrop.connId, objectToDrop.name, objectToDrop.type);
+          toast.success(`${objectToDrop.type} dropped successfully`);
+          setRefreshTrigger(prev => prev + 1);
+          // Close any tabs related to this table
+          setTabs(tabs.filter(t => !(t.connectionId === objectToDrop.connId && t.content === objectToDrop.name)));
+      } catch (e: any) {
+          toast.error(`Error dropping ${objectToDrop.type}: ${e.response?.data?.detail || e.message}`);
+      } finally {
+          setObjectToDrop(null);
+      }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden font-sans">
       <MenuBar 
@@ -343,6 +360,7 @@ function App() {
             onEditConnection={(conn) => { setEditingConnection(conn); setIsModalOpen(true); }}
             onDeleteConnection={(id) => { setConnectionToDelete(id); setIsConfirmDeleteOpen(true); }}
             onExportTable={(connId, tableName) => { setExportTarget({connId, tableName}); setIsExportOpen(true); }}
+            onDropObject={(connId, name, type) => { setObjectToDrop({connId, name, type}); setIsConfirmDropOpen(true); }}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectConnection={setSelectedConnectionId}
             onRefresh={() => setRefreshTrigger(prev => prev + 1)}
@@ -494,6 +512,16 @@ function App() {
         confirmText="Delete"
         variant="destructive"
         onConfirm={handleDeleteConfirm}
+      />
+
+      <ConfirmDialog 
+        open={isConfirmDropOpen}
+        onOpenChange={setIsConfirmDropOpen}
+        title={`Drop ${objectToDrop?.type}`}
+        description={`Are you sure you want to drop the ${objectToDrop?.type} '${objectToDrop?.name}'? This action is permanent and will delete all data.`}
+        confirmText="Drop Object"
+        variant="destructive"
+        onConfirm={handleDropConfirm}
       />
 
       <Toaster theme={theme as 'light' | 'dark'} richColors />

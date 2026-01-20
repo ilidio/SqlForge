@@ -22,6 +22,7 @@ interface Props {
   onEditConnection: (conn: ConnectionConfig) => void;
   onDeleteConnection: (connId: string) => void;
   onExportTable: (connId: string, tableName: string) => void;
+  onDropObject: (connId: string, name: string, type: string) => void;
   onOpenSettings: () => void;
   onSelectConnection?: (connId: string) => void;
   onRefresh?: () => void;
@@ -333,7 +334,7 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
                                                                                 <Download size={14} /> Export Data...
                                                                             </ContextMenuItem>
                                                                             <ContextMenuSeparator />
-                                                                            <ContextMenuItem className="text-destructive gap-2 focus:text-destructive" onClick={() => toast.warning(`Drop Table ${t.name}: Action not yet implemented`)}>
+                                                                            <ContextMenuItem className="text-destructive gap-2 focus:text-destructive" onClick={() => onDropObject(conn.id!, t.name, t.type)}>
                                                                                 <Trash2 size={14} /> Drop {type.charAt(0).toUpperCase() + type.slice(1)}
                                                                             </ContextMenuItem>
                                                                         </ContextMenuContent>

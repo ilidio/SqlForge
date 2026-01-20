@@ -119,6 +119,32 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     
     return items
 
+def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
+    if config.type in ['redis', 'mongodb']:
+        # Basic MongoDB collection drop support
+        if config.type == 'mongodb' and object_type == 'collection':
+            try:
+                client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+                db = client[config.database]
+                db.drop_collection(object_name)
+                return {"success": True, "error": None}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Drop not yet supported for {config.type}"}
+    
+    engine = get_engine(config)
+    # Map UI types to SQL keywords
+    sql_type = object_type.upper()
+    if sql_type == 'COLLECTION': sql_type = 'TABLE' # Should not happen for SQL dialects
+    
+    try:
+        with engine.begin() as conn:
+            stmt = text(f"DROP {sql_type} {object_name}")
+            conn.execute(stmt)
+            return {"success": True, "error": None}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
     if config.type in ['redis', 'mongodb']:
         return [{"success": False, "error": f"Batch operations not yet supported for {config.type}"}]

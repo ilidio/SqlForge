@@ -224,6 +224,18 @@ def schema_sync(request: SyncRequest):
     result = pro_sync.sync_schemas(source, target, dry_run=request.dry_run)
     return result
 
+@app.post("/connections/{conn_id}/drop")
+def drop_db_object(conn_id: str, request: Dict[str, str]):
+    # request format: { "name": str, "type": str }
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    result = database.drop_object(config, request.get("name", ""), request.get("type", "table"))
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
