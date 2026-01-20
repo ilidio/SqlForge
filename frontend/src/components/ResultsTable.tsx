@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2 } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -17,19 +17,34 @@ interface Props {
   onRefresh?: () => void;
 }
 
-export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, onRefresh }) => {
+export interface ResultsTableHandle {
+    focus: () => void;
+}
+
+export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, data, onRefresh }, ref) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [editingCell, setEditingCell] = useState<{rowIndex: number, column: string} | null>(null);
-  const [changes, setChanges] = useState<Record<string, unknown>>({}); // Format: "rowIndex-column": value
+  const [changes, setChanges] = useState<Record<string, unknown>>({}); 
   const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
   const [editValue, setEditValue] = useState<string>('');
   const [applying, setApplying] = useState(false);
 
-  // Reset changes when new data comes in
   useEffect(() => {
     setChanges({});
     setDeletedRows(new Set());
     setEditingCell(null);
   }, [data]);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+        // Focus the scroll area container
+        const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport instanceof HTMLElement) {
+            viewport.tabIndex = -1;
+            viewport.focus();
+        }
+    }
+  }));
 
   const handleApplyChanges = async () => {
     if (!connectionId || !tableName || !data) return;
@@ -37,20 +52,12 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
     
     try {
         const operations: any[] = [];
-        
-        // 1. Handle Deletions
         Array.from(deletedRows).forEach(rowIndex => {
             const originalRow = data.rows[rowIndex];
-            operations.push({
-                type: 'delete',
-                table: tableName,
-                where: originalRow
-            });
+            operations.push({ type: 'delete', table: tableName, where: originalRow });
         });
 
-        // 2. Handle Updates
         const rowIndices = new Set(Object.keys(changes).map(k => k.split('-')[0]));
-        
         for (const idxStr of Array.from(rowIndices)) {
             const rowIndex = parseInt(idxStr);
             if (deletedRows.has(rowIndex)) continue;
@@ -65,12 +72,7 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
             });
 
             if (Object.keys(updates).length > 0) {
-                operations.push({
-                    type: 'update',
-                    table: tableName,
-                    data: updates,
-                    where: originalRow
-                });
+                operations.push({ type: 'update', table: tableName, data: updates, where: originalRow });
             }
         }
 
@@ -139,9 +141,7 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
             <AlertCircle size={32} className="mb-4 text-destructive opacity-80" />
             <h3 className="text-lg font-bold mb-2 text-destructive">Query Error</h3>
             <div className="bg-background p-4 rounded-lg border border-destructive/20 font-mono text-sm max-w-2xl w-full overflow-auto shadow-sm text-left">
-                <code className="text-destructive/90 whitespace-pre-wrap">
-                    {data.error}
-                </code>
+                <code className="text-destructive/90 whitespace-pre-wrap">{data.error}</code>
             </div>
         </div>
       );
@@ -163,34 +163,23 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
               <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
                   <RotateCcw size={14} />
-                  {Object.keys(changes).length + deletedRows.size} pending changes in this view
+                  {Object.keys(changes).length + deletedRows.size} pending changes
               </div>
               <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => { setChanges({}); setDeletedRows(new Set()); }} disabled={applying}>Discard</Button>
-                  <Button 
-                    variant="default" 
-                    size="sm" 
-                    className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 gap-1.5" 
-                    onClick={handleApplyChanges}
-                    loading={applying}
-                  >
-                      <Save size={12} /> Apply Changes
-                  </Button>
+                  <Button variant="default" size="sm" className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={handleApplyChanges} loading={applying}><Save size={12} /> Apply Changes</Button>
               </div>
           </div>
       )}
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <table className="w-full text-left border-collapse text-xs whitespace-nowrap font-mono">
           <thead className="sticky top-0 bg-muted/80 backdrop-blur-md shadow-sm z-10">
             <tr className="border-b border-border">
               <th className="p-2.5 w-10 text-center text-muted-foreground select-none font-medium border-r border-border/50">#</th>
               {data.columns.map(col => (
                 <th key={col} className="p-2.5 font-bold text-foreground select-none border-r border-border/50 bg-muted/30">
-                  <div className="flex items-center gap-2">
-                    <Layers size={10} className="text-primary/70" />
-                    {col}
-                  </div>
+                  <div className="flex items-center gap-2"><Layers size={10} className="text-primary/70" />{col}</div>
                 </th>
               ))}
             </tr>
@@ -199,20 +188,11 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
             {data.rows.map((row, i) => {
               const isDeleted = deletedRows.has(i);
               return (
-                <tr 
-                    key={i} 
-                    className={cn(
-                        "hover:bg-primary/5 group transition-colors even:bg-muted/10",
-                        isDeleted && "bg-destructive/10 hover:bg-destructive/20 line-through opacity-60"
-                    )}
-                >
+                <tr key={i} className={cn("hover:bg-primary/5 group transition-colors even:bg-muted/10", isDeleted && "bg-destructive/10 hover:bg-destructive/20 line-through opacity-60")}>
                   <td className="p-2 border-r border-border/50 text-center text-muted-foreground/60 font-medium group-hover:text-primary relative">
                       {!isReadOnly && (
                           <button 
-                            className={cn(
-                                "absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/80",
-                                isDeleted ? "text-primary" : "text-destructive"
-                            )}
+                            className={cn("absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/80", isDeleted ? "text-primary" : "text-destructive")}
                             onClick={(e) => { e.stopPropagation(); toggleDeleteRow(i); }}
                             title={isDeleted ? "Restore Row" : "Delete Row"}
                           >
@@ -231,11 +211,7 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
                     return (
                       <td 
                         key={col} 
-                        className={cn(
-                            "p-0 border-r border-border/50 text-foreground/90 transition-colors relative min-w-[80px]",
-                            isChanged && "bg-amber-500/10",
-                            isDeleted && "pointer-events-none"
-                        )}
+                        className={cn("p-0 border-r border-border/50 text-foreground/90 transition-colors relative min-w-[80px]", isChanged && "bg-amber-500/10", isDeleted && "pointer-events-none")}
                         onDoubleClick={() => !isDeleted && startEditing(i, col, displayValue)}
                       >
                           {isEditing ? (
@@ -248,13 +224,9 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
                                 onKeyDown={handleKeyDown}
                               />
                           ) : (
-                              <div className="px-2 py-2 truncate">
-                                  {isNull ? <span className="text-muted-foreground/40 italic font-sans text-[10px]">NULL</span> : String(displayValue)}
-                              </div>
+                              <div className="px-2 py-2 truncate">{isNull ? <span className="text-muted-foreground/40 italic font-sans text-[10px]">NULL</span> : String(displayValue)}</div>
                           )}
-                          {isChanged && !isEditing && (
-                              <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-amber-500 rounded-bl-sm" title={`Original: ${String(row[col])}`} />
-                          )}
+                          {isChanged && !isEditing && (<div className="absolute top-0 right-0 w-1.5 h-1.5 bg-amber-500 rounded-bl-sm" title={`Original: ${String(row[col])}`} />)}
                       </td>
                     );
                 })}
@@ -271,11 +243,10 @@ export const ResultsTable: React.FC<Props> = ({ connectionId, tableName, data, o
               <span className="opacity-30">|</span>
               <span>{data.columns.length} columns</span>
           </div>
-          <div className="flex items-center gap-1 opacity-60">
-              <CheckCircle size={10} className="text-emerald-500" />
-              Query successful
-          </div>
+          <div className="flex items-center gap-1 opacity-60"><CheckCircle size={10} className="text-emerald-500" />Query successful</div>
       </div>
     </div>
   );
-};
+});
+
+ResultsTable.displayName = 'ResultsTable';

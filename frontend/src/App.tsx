@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { QueryTab, type QueryTabHandle } from './components/QueryTab';
 import { ObjectBrowserTab } from './components/ObjectBrowserTab';
-import { ResultsTable } from './components/ResultsTable';
+import { ResultsTable, type ResultsTableHandle } from './components/ResultsTable';
 import { ConnectionModal } from './components/ConnectionModal';
 import { Logo } from './components/ui/Logo';
 import { MenuBar } from './components/MenuBar';
@@ -30,6 +30,7 @@ interface Tab {
 function App() {
   const { theme, setTheme } = useTheme();
   const activeQueryTabRef = React.useRef<QueryTabHandle>(null);
+  const activeTableTabRef = React.useRef<ResultsTableHandle>(null);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [connections, setConnections] = useState<ConnectionConfig[]>([]);
@@ -306,6 +307,10 @@ function App() {
           if (action === 'undo') activeQueryTabRef.current?.undo();
           if (action === 'redo') activeQueryTabRef.current?.redo();
           if (action === 'focus_editor') activeQueryTabRef.current?.focus();
+          if (action === 'focus_results') {
+              if (activeTab?.type === 'query') activeQueryTabRef.current?.focusResults();
+              else if (activeTab?.type === 'table') activeTableTabRef.current?.focus();
+          }
 
           if (action === 'ai_copilot') {
               if (activeTab) {
@@ -387,6 +392,7 @@ function App() {
                 )}
                 {activeTab.type === 'table' && (
                   <ResultsTable 
+                    ref={activeTableTabRef}
                     key={activeTab.id}
                     data={activeTab.data || {columns: [], rows: [], error: null}} 
                     connectionId={activeTab.connectionId}

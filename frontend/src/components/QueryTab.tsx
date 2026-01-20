@@ -1,7 +1,7 @@
 import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { api } from '../api';
 import { toast } from 'sonner';
-import { ResultsTable } from './ResultsTable';
+import { ResultsTable, type ResultsTableHandle } from './ResultsTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,11 +21,13 @@ export interface QueryTabHandle {
   undo: () => void;
   redo: () => void;
   focus: () => void;
+  focusResults: () => void;
 }
 
 export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '' }, ref) => {
   const [sql, setSql] = useState(initialSql);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const resultsTableRef = useRef<ResultsTableHandle>(null);
   const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
   const [loading, setLoading] = useState(false);
   
@@ -96,13 +98,18 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     textareaRef.current?.focus();
   };
 
+  const focusResults = () => {
+    resultsTableRef.current?.focus();
+  };
+
   useImperativeHandle(ref, () => ({
     formatSql,
     executeQuery: runQuery,
     toggleAi,
     undo,
     redo,
-    focus
+    focus,
+    focusResults
   }));
 
   const generateSQL = async () => {
@@ -333,6 +340,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
       
       <div className="h-1/2 flex flex-col overflow-hidden bg-background">
          <ResultsTable 
+            ref={resultsTableRef}
             data={result} 
             connectionId={connectionId} 
             tableName={inferredTable}
