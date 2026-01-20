@@ -12,6 +12,7 @@ import HelpDialog from './components/HelpDialog';
 import SyncWizard from './components/SyncWizard';
 import BackupWizard from './components/BackupWizard';
 import MonitorDashboard from './components/MonitorDashboard';
+import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { api, type ConnectionConfig } from './api';
 import { useTheme } from './lib/ThemeContext';
 import { Toaster, toast } from 'sonner';
@@ -49,6 +50,8 @@ function App() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [editingConnection, setEditingConnection] = useState<ConnectionConfig | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [connectionToDelete, setConnectionToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     setLoadingConnections(true);
@@ -208,6 +211,21 @@ function App() {
 
   const activeTab = tabs.find(t => t.id === activeTabId);
 
+  const handleDeleteConfirm = async () => {
+      if (!connectionToDelete) return;
+      try {
+          await api.deleteConnection(connectionToDelete);
+          setRefreshTrigger(prev => prev + 1);
+          setTabs(tabs.filter(t => t.connectionId !== connectionToDelete));
+          if (selectedConnectionId === connectionToDelete) setSelectedConnectionId(null);
+          toast.success("Connection deleted successfully");
+      } catch {
+          toast.error("Error deleting connection");
+      } finally {
+          setConnectionToDelete(null);
+      }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden font-sans">
       <MenuBar 
@@ -273,18 +291,8 @@ function App() {
           }
           if (action === 'delete_connection' && (selectedConnectionId || activeTab?.connectionId)) {
               const connId = activeTab?.connectionId || selectedConnectionId;
-              if (window.confirm("Are you sure you want to delete this connection?")) {
-                  try {
-                      await api.deleteConnection(connId!);
-                      setRefreshTrigger(prev => prev + 1);
-                      if (activeTab?.connectionId === connId) {
-                          // Optionally close tabs associated with this connection
-                          setTabs(tabs.filter(t => t.connectionId !== connId));
-                      }
-                  } catch {
-                      toast.error("Error deleting connection");
-                  }
-              }
+              setConnectionToDelete(connId || null);
+              setIsConfirmDeleteOpen(true);
           }
           if (['connect', 'reconnect', 'refresh_metadata'].includes(action) && (selectedConnectionId || activeTab?.connectionId)) {
               setRefreshTrigger(prev => prev + 1);
@@ -475,6 +483,16 @@ function App() {
       <MonitorDashboard 
         open={isMonitorOpen} 
         onOpenChange={setIsMonitorOpen} 
+      />
+
+      <ConfirmDialog 
+        open={isConfirmDeleteOpen}
+        onOpenChange={setIsConfirmDeleteOpen}
+        title="Delete Connection"
+        description="Are you sure you want to delete this connection? This action cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
       />
 
       <Toaster theme={theme as 'light' | 'dark'} richColors />
