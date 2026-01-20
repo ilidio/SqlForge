@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { QueryTab, type QueryTabHandle } from './components/QueryTab';
 import { ObjectBrowserTab } from './components/ObjectBrowserTab';
+import { ResultsTable } from './components/ResultsTable';
 import { ConnectionModal } from './components/ConnectionModal';
 import { Logo } from './components/ui/Logo';
 import { MenuBar } from './components/MenuBar';
