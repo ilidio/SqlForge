@@ -21,6 +21,7 @@ interface Props {
   onNewConnection: () => void;
   onEditConnection: (conn: ConnectionConfig) => void;
   onDeleteConnection: (connId: string) => void;
+  onExportTable: (connId: string, tableName: string) => void;
   onOpenSettings: () => void;
   onSelectConnection?: (connId: string) => void;
   onRefresh?: () => void;
@@ -328,7 +329,7 @@ export const Sidebar: React.FC<Props> = ({ onSelectTable, onOpenQuery, onOpenBro
                                                                                 </ContextMenuSubContent>
                                                                             </ContextMenuSub>
                                                                             <ContextMenuSeparator />
-                                                                            <ContextMenuItem className="gap-2" onClick={() => toast.info("Export Wizard opening...")}>
+                                                                            <ContextMenuItem className="gap-2" onClick={() => onExportTable(conn.id!, t.name)}>
                                                                                 <Download size={14} /> Export Data...
                                                                             </ContextMenuItem>
                                                                             <ContextMenuSeparator />
