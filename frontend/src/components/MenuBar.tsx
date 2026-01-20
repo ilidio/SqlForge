@@ -42,7 +42,7 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
             { label: 'Format SQL', icon: <Zap size={14}/>, shortcut: 'Ctrl+Shift+F', onClick: () => onAction?.('format_sql'), disabled: activeTabType !== 'query' },
         ],
         View: [
-            { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('open_browser'), disabled: !hasConnections },
+            { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('open_browser'), disabled: !hasSelectedConnection },
             { label: 'Toggle Sidebar', onClick: () => onAction?.('toggle_sidebar') },
             { label: 'Query Editor', shortcut: 'F9', onClick: () => onAction?.('focus_editor'), disabled: activeTabType !== 'query' },
             { label: 'Result Grid', shortcut: 'F10', onClick: () => onAction?.('focus_results'), disabled: !['query', 'table'].includes(activeTabType || '') },
