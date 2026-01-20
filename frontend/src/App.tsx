@@ -321,6 +321,7 @@ function App() {
           }
 
           if (action === 'format_sql' && activeTab?.type === 'query') activeQueryTabRef.current?.formatSql();
+          if (action === 'save_query' && activeTab?.type === 'query') activeQueryTabRef.current?.saveQuery();
           if (action === 'undo' && activeTab?.type === 'query') activeQueryTabRef.current?.undo();
           if (action === 'redo' && activeTab?.type === 'query') activeQueryTabRef.current?.redo();
           if (action === 'focus_editor' && activeTab?.type === 'query') activeQueryTabRef.current?.focus();

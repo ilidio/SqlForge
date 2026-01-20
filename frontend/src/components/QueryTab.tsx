@@ -22,84 +22,25 @@ export interface QueryTabHandle {
   redo: () => void;
   focus: () => void;
   focusResults: () => void;
+  saveQuery: () => void;
 }
-
-export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '' }, ref) => {
-  const [sql, setSql] = useState(initialSql);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const resultsTableRef = useRef<ResultsTableHandle>(null);
-  const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
-  const [loading, setLoading] = useState(false);
-  
-  // AI State
-  const [showAi, setShowAi] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [aiModel, setAiModel] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-
-  useEffect(() => {
-    const savedKey = localStorage.getItem('gemini_api_key');
-    const savedModel = localStorage.getItem('ai_model');
-    if (savedKey) setApiKey(savedKey);
-    if (savedModel) setAiModel(savedModel);
-  }, []);
-
-  const saveApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('gemini_api_key', key);
-  };
-
-  const saveAiModel = (model: string) => {
-    setAiModel(model);
-    localStorage.setItem('ai_model', model);
-  };
-
-  const runQuery = async () => {
-    setLoading(true);
-    try {
-      const res = await api.runQuery(connectionId, sql);
-      setResult(res);
-    } catch (e: unknown) {
-      setResult({ columns: [], rows: [], error: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatSql = () => {
-    try {
-      const formatted = format(sql, { language: 'sql', keywordCase: 'upper' });
-      setSql(formatted);
-    } catch (e) {
-      console.error("Format error", e);
-    }
-  };
-
-  const toggleAi = (open?: boolean) => {
-    setShowAi(open ?? !showAi);
-  };
-
-  const undo = () => {
-    if (textareaRef.current) {
-        textareaRef.current.focus();
-        document.execCommand('undo');
-    }
-  };
-
-  const redo = () => {
-    if (textareaRef.current) {
-        textareaRef.current.focus();
-        document.execCommand('redo');
-    }
-  };
-
-  const focus = () => {
-    textareaRef.current?.focus();
-  };
-
+...
   const focusResults = () => {
     resultsTableRef.current?.focus();
+  };
+
+  const saveQuery = () => {
+    if (!sql) return;
+    const blob = new Blob([sql], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `query_${new Date().getTime()}.sql`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Query saved as .sql file");
   };
 
   useImperativeHandle(ref, () => ({
@@ -109,8 +50,10 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     undo,
     redo,
     focus,
-    focusResults
+    focusResults,
+    saveQuery
   }));
+
 
   const generateSQL = async () => {
     if (!apiKey || !aiModel) {
