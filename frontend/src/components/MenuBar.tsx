@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { 
@@ -26,7 +26,7 @@ interface MenuProps {
 export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTabType, hasSelectedConnection, hasConnections }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-    const menus: Record<string, MenuItem[]> = {
+    const menus: Record<string, MenuItem[]> = useMemo(() => ({
         File: [
             { label: 'New Connection...', icon: <Plus size={14}/>, shortcut: 'Ctrl+N', onClick: () => onAction?.('new_connection') },
             { divider: true },
@@ -36,10 +36,10 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
             { label: 'Settings', icon: <Settings size={14}/>, shortcut: 'Ctrl+,', onClick: () => onAction?.('open_settings') },
         ],
         Edit: [
-            { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => onAction?.('undo'), disabled: !hasActiveTab },
-            { label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => onAction?.('redo'), disabled: !hasActiveTab },
+            { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => onAction?.('undo'), disabled: activeTabType !== 'query' },
+            { label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => onAction?.('redo'), disabled: activeTabType !== 'query' },
             { divider: true },
-            { label: 'Format SQL', icon: <Zap size={14}/>, shortcut: 'Ctrl+Shift+F', onClick: () => onAction?.('format_sql'), disabled: !hasActiveTab },
+            { label: 'Format SQL', icon: <Zap size={14}/>, shortcut: 'Ctrl+Shift+F', onClick: () => onAction?.('format_sql'), disabled: activeTabType !== 'query' },
         ],
         View: [
             { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('open_browser'), disabled: !hasConnections },
@@ -71,7 +71,7 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
             { label: 'Backup...', icon: <Save size={14}/>, onClick: () => onAction?.('backup'), disabled: !hasConnections },
             { label: 'Restore...', onClick: () => onAction?.('restore'), disabled: !hasConnections },
             { divider: true },
-            { label: 'AI Assistant', icon: <Sparkles size={14} className="text-purple-500"/>, onClick: () => onAction?.('ai_copilot'), disabled: !hasActiveTab },
+            { label: 'AI Assistant', icon: <Sparkles size={14} className="text-purple-500"/>, onClick: () => onAction?.('ai_copilot'), disabled: activeTabType !== 'query' },
             { label: 'Server Monitor', icon: <Cpu size={14}/>, onClick: () => onAction?.('monitor'), disabled: !hasConnections },
         ],
         Help: [
@@ -80,7 +80,7 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
             { divider: true },
             { label: 'About SqlForge', onClick: () => onAction?.('open_about') },
         ]
-    };
+    }), [onAction, hasActiveTab, activeTabType, hasSelectedConnection, hasConnections]);
 
     useEffect(() => {
         const handleClickOutside = () => setOpenMenu(null);
