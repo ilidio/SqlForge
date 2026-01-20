@@ -1,7 +1,6 @@
 import { render, fireEvent, waitFor, screen } from '@testing-library/react';
 import SyncWizard from '../SyncWizard';
-import { vi, expect, test, beforeEach } from 'vitest';
-import { api } from '../../api';
+import { vi, expect, test } from 'vitest';
 
 vi.mock('../../api', () => ({
   api: {

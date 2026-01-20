@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { QueryTab, type QueryTabHandle } from './components/QueryTab';
 import { ObjectBrowserTab } from './components/ObjectBrowserTab';
 import { ResultsTable, type ResultsTableHandle } from './components/ResultsTable';
+import { ERDiagramTab } from './components/ERDiagramTab';
 import { ConnectionModal } from './components/ConnectionModal';
 import { Logo } from './components/ui/Logo';
 import { MenuBar } from './components/MenuBar';
@@ -12,6 +13,7 @@ import HelpDialog from './components/HelpDialog';
 import SyncWizard from './components/SyncWizard';
 import BackupWizard from './components/BackupWizard';
 import ExportWizard from './components/ExportWizard';
+import ImportWizard from './components/ImportWizard';
 import MonitorDashboard from './components/MonitorDashboard';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { api, type ConnectionConfig } from './api';
@@ -23,7 +25,7 @@ import { cn } from '@/lib/utils';
 interface Tab {
   id: string;
   title: string;
-  type: 'query' | 'table' | 'browser';
+  type: 'query' | 'table' | 'browser' | 'diagram';
   connectionId: string;
   content?: string; // For query: sql; For table: tableName
   data?: {columns: string[], rows: Record<string, unknown>[], error: string | null};
@@ -47,6 +49,8 @@ function App() {
   const [backupMode, setBackupMode] = useState<'backup' | 'restore'>('backup');
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportTarget, setExportTarget] = useState<{connId: string, tableName: string} | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importTarget, setImportTarget] = useState<{connId: string, tableName: string} | null>(null);
   const [isMonitorOpen, setIsMonitorOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [helpTab, setHelpTab] = useState('shortcuts');
@@ -168,6 +172,24 @@ function App() {
     } catch {
         toast.error("Error opening Object Browser");
     }
+  };
+
+  const handleOpenDiagram = (connId: string) => {
+    const existing = tabs.find(t => t.type === 'diagram' && t.connectionId === connId);
+    if (existing) {
+        setActiveTabId(existing.id);
+        return;
+    }
+
+    const conn = connections.find(c => c.id === connId);
+    const newTab: Tab = {
+        id: Math.random().toString(36).substring(7),
+        title: `ER Diagram: ${conn?.name || 'Unknown'} `,
+        type: 'diagram',
+        connectionId: connId
+    };
+    setTabs([...tabs, newTab]);
+    setActiveTabId(newTab.id);
   };
 
   const handleSelectTable = async (connId: string, tableName: string) => {
@@ -358,10 +380,12 @@ function App() {
             onSelectTable={handleSelectTable} 
             onOpenQuery={handleOpenQuery}
             onOpenBrowser={handleOpenBrowser}
+            onOpenDiagram={handleOpenDiagram}
             onNewConnection={() => setIsModalOpen(true)}
             onEditConnection={(conn) => { setEditingConnection(conn); setIsModalOpen(true); }}
             onDeleteConnection={(id) => { setConnectionToDelete(id); setIsConfirmDeleteOpen(true); }}
             onExportTable={(connId, tableName) => { setExportTarget({connId, tableName}); setIsExportOpen(true); }}
+            onImportTable={(connId, tableName) => { setImportTarget({connId, tableName}); setIsImportOpen(true); }}
             onDropObject={(connId, name, type) => { setObjectToDrop({connId, name, type}); setIsConfirmDropOpen(true); }}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectConnection={setSelectedConnectionId}
@@ -434,6 +458,12 @@ function App() {
                     onOpenQuery={() => handleOpenQuery(activeTab.connectionId)}
                   />
                 )}
+                {activeTab.type === 'diagram' && (
+                  <ERDiagramTab 
+                    key={activeTab.id} 
+                    connectionId={activeTab.connectionId} 
+                  />
+                )}
               </>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in duration-500">
@@ -499,6 +529,13 @@ function App() {
         onOpenChange={setIsExportOpen}
         connectionId={exportTarget?.connId || null}
         tableName={exportTarget?.tableName || null}
+      />
+
+      <ImportWizard 
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        connectionId={importTarget?.connId || null}
+        tableName={importTarget?.tableName || null}
       />
 
       <MonitorDashboard 

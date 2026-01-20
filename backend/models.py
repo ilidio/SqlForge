@@ -26,6 +26,16 @@ class ColumnInfo(BaseModel):
     type: str
     primary_key: bool
 
+class ForeignKeyInfo(BaseModel):
+    constrained_column: str
+    referred_table: str
+    referred_column: str
+
+class TableSchema(BaseModel):
+    name: str
+    columns: List[ColumnInfo]
+    foreign_keys: List[ForeignKeyInfo]
+
 class QueryResult(BaseModel):
     columns: List[str]
     rows: List[Dict[str, Any]]

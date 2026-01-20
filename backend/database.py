@@ -1,9 +1,12 @@
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
-from models import ConnectionConfig, TableInfo, ColumnInfo
+from models import ConnectionConfig, TableInfo, ColumnInfo, ForeignKeyInfo, TableSchema
 import os
 import redis
 from pymongo import MongoClient
+import csv
+import json
+import io
 
 # --- SQL HANDLING ---
 
@@ -118,6 +121,58 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
         print(f"Error inspecting metadata: {e}")
     
     return items
+
+def get_schema_details(config: ConnectionConfig) -> list[TableSchema]:
+    if config.type in ['redis', 'mongodb']:
+        return []
+
+    engine = get_engine(config)
+    inspector = inspect(engine)
+    schemas = []
+
+    try:
+        for table_name in inspector.get_table_names():
+            # Get Columns
+            columns = []
+            try:
+                # Get PKs
+                pks = inspector.get_pk_constraint(table_name).get('constrained_columns', [])
+                
+                for col in inspector.get_columns(table_name):
+                    columns.append(ColumnInfo(
+                        name=col['name'],
+                        type=str(col['type']),
+                        primary_key=col['name'] in pks
+                    ))
+            except Exception as e:
+                print(f"Error reading columns for {table_name}: {e}")
+                continue
+
+            # Get FKs
+            fks = []
+            try:
+                for fk in inspector.get_foreign_keys(table_name):
+                    # SQLAlchemy returns constrained_columns as a list, usually one for simple FKs
+                    # We'll take the first one for simplicity in this visualization or iterate
+                    if fk['constrained_columns'] and fk['referred_columns']:
+                        fks.append(ForeignKeyInfo(
+                            constrained_column=fk['constrained_columns'][0],
+                            referred_table=fk['referred_table'],
+                            referred_column=fk['referred_columns'][0]
+                        ))
+            except Exception as e:
+                print(f"Error reading FKs for {table_name}: {e}")
+
+            schemas.append(TableSchema(
+                name=table_name,
+                columns=columns,
+                foreign_keys=fks
+            ))
+            
+    except Exception as e:
+        print(f"Error inspecting schema: {e}")
+        
+    return schemas
 
 def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
     if config.type in ['redis', 'mongodb']:
@@ -253,3 +308,64 @@ def execute_query(config: ConnectionConfig, query_str: str):
                 return {"columns": [], "rows": [], "error": "Query executed successfully (no rows returned)"}
     except Exception as e:
         return {"columns": [], "rows": [], "error": str(e)}
+
+def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes, file_format: str, mode: str = 'append'):
+    if config.type in ['redis', 'mongodb']:
+        return {"success": False, "error": f"Import not yet supported for {config.type}"}
+
+    engine = get_engine(config)
+    
+    # 1. Parse Data
+    data_rows = []
+    columns = []
+    
+    try:
+        if file_format == 'csv':
+            # Decode bytes to string
+            content_str = file_contents.decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(content_str))
+            columns = csv_reader.fieldnames
+            for row in csv_reader:
+                # Handle basic type conversion if needed (e.g. empty string to None)
+                cleaned_row = {k: (None if v == '' else v) for k, v in row.items()}
+                data_rows.append(cleaned_row)
+                
+        elif file_format == 'json':
+            content_str = file_contents.decode('utf-8')
+            data_rows = json.loads(content_str)
+            if isinstance(data_rows, list) and len(data_rows) > 0:
+                columns = list(data_rows[0].keys())
+            else:
+                return {"success": False, "error": "Invalid JSON format. Expected list of objects."}
+        else:
+            return {"success": False, "error": "Unsupported file format"}
+            
+    except Exception as e:
+        return {"success": False, "error": f"Failed to parse file: {str(e)}"}
+
+    if not data_rows:
+        return {"success": True, "message": "No data found in file"}
+
+    # 2. Insert Data
+    try:
+        with engine.begin() as conn:
+            if mode == 'truncate':
+                conn.execute(text(f"DELETE FROM {table_name}"))
+            
+            # Use SQLAlchemy's insert
+            # We construct a parameterized insert statement
+            # INSERT INTO table (col1, col2) VALUES (:col1, :col2)
+            
+            # Naive approach: Insert one by one or in chunks. SQLAlchemy can handle list of dicts.
+            # However, we must ensure the dict keys match table columns.
+            # For this prototype, we assume the file headers MATCH the table columns.
+            
+            placeholders = ", ".join([f":{col}" for col in columns])
+            stmt = text(f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})")
+            
+            conn.execute(stmt, data_rows)
+            
+        return {"success": True, "message": f"Successfully imported {len(data_rows)} rows into {table_name}"}
+            
+    except Exception as e:
+        return {"success": False, "error": f"Database error: {str(e)}"}

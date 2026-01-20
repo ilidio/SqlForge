@@ -70,6 +70,7 @@ export default function ExportWizard({ open, onOpenChange, connectionId, tableNa
                             <DialogTitle className="text-xl font-bold tracking-tight">Export Wizard</DialogTitle>
                             <DialogDescription className="text-xs">
                                 Exporting table <span className="font-bold text-foreground underline decoration-primary/30 decoration-2">{tableName}</span>
+                                <span className="ml-2 text-muted-foreground opacity-50">#{connectionId}</span>
                             </DialogDescription>
                         </div>
                     </div>

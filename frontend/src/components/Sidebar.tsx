@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { 
     ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent 
 } from '@/components/ui/context-menu';
-import { type LucideIcon, Moon, Sun, Edit2, Trash2, Copy, PlayCircle, Database as DbIcon, Download, Info } from 'lucide-react';
+import { type LucideIcon, Moon, Sun, Edit2, Trash2, Copy, Database as DbIcon, Download, Info, Workflow, X, Upload } from 'lucide-react';
 import { useTheme } from '@/lib/ThemeContext';
 import { toast } from 'sonner';
 
@@ -18,10 +18,12 @@ interface Props {
   onSelectTable: (connId: string, tableName: string) => void;
   onOpenQuery: (connId: string, sql?: string) => void;
   onOpenBrowser: (connId: string) => void;
+  onOpenDiagram: (connId: string) => void;
   onNewConnection: () => void;
   onEditConnection: (conn: ConnectionConfig) => void;
   onDeleteConnection: (connId: string) => void;
   onExportTable: (connId: string, tableName: string) => void;
+  onImportTable: (connId: string, tableName: string) => void;
   onDropObject: (connId: string, name: string, type: string) => void;
   onOpenSettings: () => void;
   onSelectConnection?: (connId: string) => void;
@@ -45,10 +47,12 @@ export const Sidebar: React.FC<Props> = ({
     onSelectTable, 
     onOpenQuery, 
     onOpenBrowser, 
+    onOpenDiagram,
     onNewConnection, 
     onEditConnection,
     onDeleteConnection,
     onExportTable,
+    onImportTable,
     onDropObject,
     onOpenSettings, 
     onSelectConnection, 
@@ -236,6 +240,9 @@ export const Sidebar: React.FC<Props> = ({
                                         <ContextMenuItem onClick={() => onOpenBrowser(conn.id!)} className="gap-2">
                                             <DbIcon size={14} /> Open Browser
                                         </ContextMenuItem>
+                                        <ContextMenuItem onClick={() => onOpenDiagram(conn.id!)} className="gap-2">
+                                            <Workflow size={14} /> Visualize Schema
+                                        </ContextMenuItem>
                                         <ContextMenuSeparator />
                                         <ContextMenuItem onClick={() => onEditConnection(conn)} className="gap-2">
                                             <Edit2 size={14} /> Edit Connection
@@ -347,6 +354,9 @@ export const Sidebar: React.FC<Props> = ({
                                                                             <ContextMenuSeparator />
                                                                             <ContextMenuItem className="gap-2" onClick={() => onExportTable(conn.id!, t.name)}>
                                                                                 <Download size={14} /> Export Data...
+                                                                            </ContextMenuItem>
+                                                                            <ContextMenuItem className="gap-2" onClick={() => onImportTable(conn.id!, t.name)}>
+                                                                                <Upload size={14} /> Import Data...
                                                                             </ContextMenuItem>
                                                                             <ContextMenuSeparator />
                                                                             <ContextMenuItem className="text-destructive gap-2 focus:text-destructive" onClick={() => onDropObject(conn.id!, t.name, t.type)}>

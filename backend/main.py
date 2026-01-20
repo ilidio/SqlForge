@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import uuid
 from typing import List, Dict, Any
 import time
 
 # Import from local modules
-from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest
+from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema
 import database
 import internal_db
 import google.generativeai as genai
@@ -105,6 +105,16 @@ def get_tables_endpoint(conn_id: str):
         raise HTTPException(status_code=404, detail="Connection not found")
     try:
         return database.get_tables(config)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/connections/{conn_id}/schema", response_model=List[TableSchema])
+def get_schema_details_endpoint(conn_id: str):
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    try:
+        return database.get_schema_details(config)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -234,6 +244,26 @@ def drop_db_object(conn_id: str, request: Dict[str, str]):
     result = database.drop_object(config, request.get("name", ""), request.get("type", "table"))
     if not result["success"]:
         raise HTTPException(status_code=500, detail=result["error"])
+    return result
+
+@app.post("/connections/{conn_id}/import/{table_name}")
+async def import_table_data(
+    conn_id: str, 
+    table_name: str,
+    file: UploadFile = File(...),
+    mode: str = Form("append"), # 'append' or 'truncate'
+    format: str = Form("csv")   # 'csv' or 'json'
+):
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    content = await file.read()
+    
+    result = database.import_data(config, table_name, content, format, mode)
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+        
     return result
 
 if __name__ == "__main__":

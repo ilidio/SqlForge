@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { api, type ConnectionConfig } from '../api';
 import { toast } from 'sonner';
-import { Database, ArrowRight, CheckCircle2, RefreshCw, Zap, ShieldCheck, FileCode, X } from 'lucide-react';
+import { Database, ArrowRight, CheckCircle2, RefreshCw, Zap, ShieldCheck, FileCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SyncWizardProps {

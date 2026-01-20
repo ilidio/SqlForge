@@ -1,7 +1,6 @@
 import { render, fireEvent, waitFor, screen } from '@testing-library/react';
 import App from '../../App';
 import { vi, expect, test, beforeEach } from 'vitest';
-import { api } from '../../api';
 import { ThemeProvider } from '../../lib/ThemeContext';
 
 // Mock localStorage
@@ -59,7 +58,7 @@ test('⌘K toggles Command Palette', async () => {
 });
 
 test('⌘N opens New Connection modal', async () => {
-  const { getByText } = render(
+  render(
     <ThemeProvider defaultTheme="dark" storageKey="test-theme">
       <App />
     </ThemeProvider>
