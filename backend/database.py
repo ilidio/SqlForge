@@ -1028,3 +1028,46 @@ def alter_table(config: ConnectionConfig, request: AlterTableRequest):
             
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+def get_execution_plan(config: ConnectionConfig, query_str: str):
+    """
+    Runs EXPLAIN (JSON) for the given query and returns the raw plan data.
+    """
+    engine = get_engine(config)
+    
+    try:
+        with engine.connect() as conn:
+            if config.type == 'postgresql':
+                # Postgres: EXPLAIN (FORMAT JSON)
+                stmt = text(f"EXPLAIN (FORMAT JSON) {query_str}")
+                result = conn.execute(stmt)
+                # Postgres returns a list of rows, the first row contains the JSON
+                plan_json = result.scalar() 
+                return {"plan": plan_json, "dialect": "postgresql", "error": None}
+                
+            elif config.type == 'mysql':
+                # MySQL: EXPLAIN FORMAT=JSON ...
+                stmt = text(f"EXPLAIN FORMAT=JSON {query_str}")
+                result = conn.execute(stmt)
+                # MySQL returns a single string in the 'EXPLAIN' column
+                row = result.fetchone()
+                plan_json = row[0] if row else "{}"
+                if isinstance(plan_json, str):
+                    try:
+                        plan_json = json.loads(plan_json)
+                    except:
+                        pass
+                return {"plan": plan_json, "dialect": "mysql", "error": None}
+                
+            elif config.type == 'sqlite':
+                # SQLite: EXPLAIN QUERY PLAN ...
+                stmt = text(f"EXPLAIN QUERY PLAN {query_str}")
+                result = conn.execute(stmt)
+                rows = [dict(row._mapping) for row in result]
+                return {"plan": rows, "dialect": "sqlite", "error": None}
+            
+            else:
+                return {"plan": None, "dialect": config.type, "error": f"Visual Explain not supported for {config.type}"}
+                
+    except Exception as e:
+        return {"plan": None, "dialect": config.type, "error": str(e)}

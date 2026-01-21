@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet } from 'lucide-react';
+import { IndexAdvisor } from './IndexAdvisor';
+import { VisualExplain } from './VisualExplain';
+import { BenchmarkDialog } from './BenchmarkDialog';
+import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2 } from 'lucide-react';
 import Editor, { useMonaco } from '@monaco-editor/react';
 
 interface Props {
@@ -37,6 +40,11 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   const [apiKey, setApiKey] = useState('');
   const [aiModel, setAiModel] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [showAdvisor, setShowAdvisor] = useState(false);
+  const [showBenchmark, setShowBenchmark] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'explain'>('grid');
+  const [planData, setPlanData] = useState<any>(null);
+  const [planDialect, setPlanDialect] = useState<string>('');
 
   // Editor Ref
   const editorRef = useRef<any>(null);
@@ -103,6 +111,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
 
   const runQuery = async () => {
     setLoading(true);
+    setViewMode('grid');
     try {
       const res = await api.runQuery(connectionId, sql);
       setResult(res);
@@ -110,6 +119,25 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
       setResult({ columns: [], rows: [], error: e instanceof Error ? e.message : String(e) });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runExplain = async () => {
+    setLoading(true);
+    setViewMode('explain');
+    try {
+      const res = await api.explainQuery(connectionId, sql);
+      if (res.error) {
+          toast.error("Explain failed: " + res.error);
+          // Fallback to text result if needed? For now just error toast.
+      } else {
+          setPlanData(res.plan);
+          setPlanDialect(res.dialect);
+      }
+    } catch (e: any) {
+        toast.error("Explain failed: " + e.message);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -371,8 +399,39 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
              )}
              <Button 
                 size="sm"
+                variant="ghost"
+                onClick={() => setShowAdvisor(true)}
+                className="h-8 text-xs gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                title="Analyze Query Performance"
+             >
+                <Zap size={13} />
+                Analyze
+             </Button>
+             <Button 
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowBenchmark(true)}
+                className="h-8 text-xs gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                title="Query Stress Test"
+             >
+                <BarChart2 size={13} />
+                Stress Test
+             </Button>
+             <Button 
+                size="sm"
+                variant="outline"
+                onClick={runExplain}
+                loading={loading && viewMode === 'explain'}
+                className="h-8 text-xs gap-1.5 px-3"
+                title="Visual Explain Plan"
+             >
+                <Activity size={13} />
+                Explain
+             </Button>
+             <Button 
+                size="sm"
                 onClick={runQuery}
-                loading={loading}
+                loading={loading && viewMode === 'grid'}
                 className="h-8 text-xs font-bold gap-1.5 px-4 shadow-sm"
              >
                 <Play size={13} />
@@ -403,15 +462,33 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
         </div>
       </div>
       
-      <div className="h-1/2 flex flex-col overflow-hidden bg-background">
-         <ResultsTable 
-            ref={resultsTableRef}
-            data={result} 
-            connectionId={connectionId} 
-            tableName={inferredTable}
-            onRefresh={runQuery}
-         />
+      <div className="h-1/2 flex flex-col overflow-hidden bg-background relative">
+         {viewMode === 'grid' ? (
+             <ResultsTable 
+                ref={resultsTableRef}
+                data={result} 
+                connectionId={connectionId} 
+                tableName={inferredTable}
+                onRefresh={runQuery}
+             />
+         ) : (
+             <VisualExplain plan={planData} dialect={planDialect} />
+         )}
       </div>
+      
+      <IndexAdvisor 
+        open={showAdvisor} 
+        onOpenChange={setShowAdvisor} 
+        connectionId={connectionId} 
+        sql={sql} 
+      />
+
+      <BenchmarkDialog 
+        open={showBenchmark} 
+        onOpenChange={setShowBenchmark} 
+        connectionId={connectionId} 
+        sql={sql} 
+      />
     </div>
   );
 });

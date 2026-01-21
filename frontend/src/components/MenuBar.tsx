@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { 
-  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X 
+  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X, Trash2 
 } from 'lucide-react';
 interface MenuItem {
     label?: string;

@@ -12,6 +12,10 @@ import internal_db
 from google import genai
 from pro import sync as pro_sync
 from pro import transfer as pro_transfer
+from pro import index_advisor
+from pro import what_if
+from monitor import locks
+from pro import benchmark
 
 app = FastAPI(title="SqlForge API")
 
@@ -164,6 +168,29 @@ def run_query(query: QueryRequest):
     
     return result
 
+@app.post("/query/explain")
+def explain_query(query: QueryRequest):
+    config = internal_db.get_connection(query.connection_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    result = database.get_execution_plan(config, query.sql)
+    return result
+
+@app.post("/query/benchmark")
+def run_query_benchmark(request: Dict[str, Any]):
+    # request: { connection_id, sql, concurrency, duration }
+    conn_id = request.get("connection_id")
+    sql = request.get("sql")
+    concurrency = int(request.get("concurrency", 5))
+    duration = int(request.get("duration", 5))
+    
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+        
+    return benchmark.run_benchmark(config, sql, concurrency, duration)
+
 @app.post("/query/batch")
 def run_batch_queries(request: Dict[str, Any]):
     # request format: { connection_id: str, operations: List[Dict] }
@@ -258,6 +285,51 @@ def generate_sql(request: AIRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/pro/index-advisor/analyze")
+def analyze_query_performance(request: AIRequest):
+    config = internal_db.get_connection(request.connection_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    # We use the AIRequest model because it has 'prompt' (which we use for SQL) and 'api_key'/'model'
+    result = index_advisor.generate_index_recommendations(
+        config, 
+        request.prompt, 
+        request.api_key, 
+        request.model
+    )
+    return result
+
+@app.post("/pro/what-if/analyze")
+def run_what_if_analysis(request: Dict[str, Any]):
+    # request: { connection_id, sql, index_ddl }
+    conn_id = request.get("connection_id")
+    sql = request.get("sql")
+    index_ddl = request.get("index_ddl")
+    
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+        
+    return what_if.evaluate_virtual_index(config, sql, index_ddl)
+
+@app.get("/monitor/locks/{conn_id}")
+def get_locks(conn_id: str):
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return locks.get_lock_tree(config)
+
+@app.post("/monitor/kill")
+def kill_session_endpoint(request: Dict[str, str]):
+    # request: { connection_id, pid }
+    conn_id = request.get("connection_id")
+    pid = request.get("pid")
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return locks.kill_session(config, pid)
 
 @app.post("/pro/sync/diff")
 def schema_diff(request: SyncRequest):

@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github, Database, Sparkles, RefreshCw, Activity } from 'lucide-react';
+import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github, Database, Sparkles, RefreshCw, Activity, Wand2, FileCode } from 'lucide-react';
 import { Logo } from './ui/Logo';
 
 interface HelpDialogProps {
@@ -68,11 +68,31 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
                             <div className="space-y-6 pb-4">
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                        <Database size={14} className="text-primary" /> Multi-Database Support
+                                        <Database size={14} className="text-primary" /> Multi-Database & Secure Connect
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        SqlForge supports a wide range of databases including **PostgreSQL, MySQL, SQLite, SQL Server, Oracle, MongoDB, and Redis**. 
-                                        Use the "New Connection" button to add a local or remote instance.
+                                        SqlForge supports **PostgreSQL, MySQL, SQLite, SQL Server, Oracle, MongoDB, and Redis**. 
+                                        Now featuring **SSH Tunneling** for securely connecting to production databases behind firewalls or bastion hosts.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <Wand2 size={14} className="text-indigo-500" /> Visual Query Builder
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        Build complex queries without writing code. Drag and drop tables, visually connect them to create **JOINs**, 
+                                        and select columns to instantly generate valid SQL. Great for data analysts and fast prototyping.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <FileCode size={14} className="text-amber-500" /> Enhanced SQL Editor
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        The new editor offers a professional coding experience with **Syntax Highlighting**, **IntelliSense Autocomplete** 
+                                        (schema-aware), and **Auto-Formatting**. It supports advanced features like minimap navigation and line numbers.
                                     </p>
                                 </section>
 
@@ -98,6 +118,16 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
 
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                        <Activity size={14} className="text-red-500" /> Lock & Deadlock Visualizer
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        Identify and resolve concurrency issues in real-time. View the **Blocking Chain** graph to see exactly which 
+                                        sessions are holding up your database. Includes a **"Kill Session"** feature to safely terminate root cause blockers.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
                                         <Activity size={14} className="text-blue-500" /> Monitoring Dashboard
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
@@ -108,7 +138,7 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
 
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                        <Keyboard size={14} className="text-amber-500" /> Command Palette & Navigation
+                                        <Keyboard size={14} className="text-zinc-500" /> Command Palette & Navigation
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
                                         SqlForge is built for a keyboard-first workflow. Use these shortcuts to jump between contexts:
