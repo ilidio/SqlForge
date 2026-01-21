@@ -99,6 +99,15 @@ def test_connection_endpoint(config: ConnectionConfig):
     success, msg = database.test_connection(config)
     return {"success": success, "message": msg}
 
+@app.get("/connections/health")
+def connections_health():
+    connections = internal_db.get_connections()
+    health_status = {}
+    for conn in connections:
+        success, _ = database.test_connection(conn)
+        health_status[conn.id] = "online" if success else "offline"
+    return health_status
+
 @app.get("/connections/{conn_id}/tables", response_model=List[TableInfo])
 def get_tables_endpoint(conn_id: str):
     config = internal_db.get_connection(conn_id)

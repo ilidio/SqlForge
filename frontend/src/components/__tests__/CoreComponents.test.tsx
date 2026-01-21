@@ -27,6 +27,7 @@ vi.mock('../../api', () => ({
       { name: 'users', type: 'table' },
       { name: 'orders', type: 'table' }
     ]),
+    getConnectionsHealth: vi.fn().mockResolvedValue({ '1': 'online' }),
     getHistory: vi.fn().mockResolvedValue([]),
     runQuery: vi.fn().mockResolvedValue({ columns: ['id', 'name'], rows: [{id: 1, name: 'Alice'}], error: null }),
     runBatchQueries: vi.fn().mockResolvedValue({ results: [{success: true, error: null}] }),

@@ -57,6 +57,7 @@ export const api = {
   discoverConnections: () => axios.get<Partial<ConnectionConfig>[]>(`${API_URL}/connections/discover`).then(r => r.data),
   getAiModels: (apiKey: string) => axios.get<{name: string, display_name: string, description: string}[]>(`${API_URL}/ai/models`, { params: { api_key: apiKey } }).then(r => r.data),
   testConnection: (config: ConnectionConfig) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/test`, config).then(r => r.data),
+  getConnectionsHealth: () => axios.get<Record<string, 'online' | 'offline'>>(`${API_URL}/connections/health`).then(r => r.data),
   getTables: (connId: string) => axios.get<{name: string, type: string}[]>(`${API_URL}/connections/${connId}/tables`).then(r => r.data),
   getSchemaDetails: (connId: string) => axios.get<TableSchema[]>(`${API_URL}/connections/${connId}/schema`).then(r => r.data),
   alterTable: (connId: string, request: AlterTableRequest) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/${connId}/schema/alter`, request).then(r => r.data),

@@ -4,7 +4,6 @@ import ImportWizard from '../ImportWizard';
 import ExportWizard from '../ExportWizard';
 import { SchemaEditor } from '../SchemaEditor';
 import { api } from '../../api';
-import { ThemeProvider } from '../../lib/ThemeContext';
 
 // Mock API
 vi.mock('../../api', () => ({
@@ -44,7 +43,6 @@ test('SchemaEditor displays columns and triggers rename', async () => {
   expect(screen.getByText('name')).toBeInTheDocument();
 
   // Click edit on 'name'
-  const editButtons = screen.getAllByRole('button');
   // From the debug output, we see refresh and add buttons at the top.
   // The edit button for the first column should be after them.
   // Let's try to find it by icon or just click the one that looks like an edit button.
@@ -64,7 +62,7 @@ test('SchemaEditor displays columns and triggers rename', async () => {
 
 test('ImportWizard handles file selection and triggers import', async () => {
   const onOpenChange = vi.fn();
-  const { container } = render(<ImportWizard open={true} onOpenChange={onOpenChange} connectionId="1" tableName="users" />);
+  render(<ImportWizard open={true} onOpenChange={onOpenChange} connectionId="1" tableName="users" />);
   
   expect(screen.getByText(/Import Wizard/i)).toBeInTheDocument();
   

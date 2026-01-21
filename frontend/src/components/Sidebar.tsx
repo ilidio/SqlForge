@@ -68,8 +68,8 @@ export const Sidebar: React.FC<Props> = ({
   const [history, setHistory] = useState<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [tables, setTables] = useState<Record<string, {name: string, type: string}[]>>({});
-  const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+  const [healthStatuses, setHealthStatuses] = useState<Record<string, 'online' | 'offline'>>({});
   const [connectionErrors, setConnectionErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -83,8 +83,22 @@ export const Sidebar: React.FC<Props> = ({
     }
   };
 
+  const checkHealth = async () => {
+      try {
+          const health = await api.getConnectionsHealth();
+          setHealthStatuses(health);
+      } catch (e) {
+          console.error("Health check failed", e);
+      }
+  };
+
   useEffect(() => {
     if (activeTab === 'history') loadHistory();
+    if (activeTab === 'connections') {
+        checkHealth();
+        const interval = setInterval(checkHealth, 30000); // Check every 30s
+        return () => clearInterval(interval);
+    }
   }, [activeTab]);
 
   const toggleConnection = async (conn: ConnectionConfig) => {
@@ -104,15 +118,9 @@ export const Sidebar: React.FC<Props> = ({
             });
             const t = await api.getTables(conn.id);
             setTables(prev => ({ ...prev, [conn.id!]: t }));
-            setConnectedIds(prev => new Set(prev).add(conn.id!));
         } catch (e: any) {
             console.error(e);
             setConnectionErrors(prev => ({ ...prev, [conn.id!]: e.response?.data?.detail || e.message }));
-            setConnectedIds(prev => {
-                const next = new Set(prev);
-                next.delete(conn.id!);
-                return next;
-            });
             // Keep it expanded so error is visible
             setExpanded(prev => ({ ...prev, [conn.id!]: true }));
         } finally {
@@ -204,11 +212,11 @@ export const Sidebar: React.FC<Props> = ({
                                             </div>
                                             <div className="relative">
                                                 <Icon size={14} className={cn(isSelected ? "text-primary" : IconInfo.color, "shrink-0")} />
-                                                {connectedIds.has(conn.id!) && (
+                                                {healthStatuses[conn.id!] && (
                                                     <div className={cn(
                                                         "absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border shadow-sm",
-                                                        isSelected ? "bg-primary border-background" : "bg-emerald-500 border-sidebar"
-                                                    )} />
+                                                        healthStatuses[conn.id!] === 'online' ? "bg-emerald-500 animate-pulse border-sidebar" : "bg-slate-400 border-sidebar"
+                                                    )} title={healthStatuses[conn.id!] === 'online' ? "Online" : "Offline"} />
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col">

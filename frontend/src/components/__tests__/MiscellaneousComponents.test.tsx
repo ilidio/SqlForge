@@ -5,7 +5,6 @@ import MonitorDashboard from '../MonitorDashboard';
 import { ObjectBrowserTab } from '../ObjectBrowserTab';
 import { ERDiagramTab } from '../ERDiagramTab';
 import { ThemeProvider } from '../../lib/ThemeContext';
-import { api } from '../../api';
 
 // Mock localStorage
 const localStorageMock = (() => {
