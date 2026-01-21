@@ -76,6 +76,23 @@ To enable the built-in AI SQL Assistant, you need to provide your Google Gemini 
 
 ---
 
+## 🛠 Development & Test Environment
+
+SqlForge includes a pre-configured Docker-based lab environment to test its multi-database features. When you run `./test.sh` or `./scripts/start_dbs.sh`, the following components are deployed:
+
+### **1. Databases (Functional Testing)**
+*   **Relational (SQL):** `Postgres`, `MySQL`, `MSSQL`, and `Oracle` instances for testing queries, schema migrations, and ER diagram generation.
+*   **NoSQL / KV:** `MongoDB` and `Redis` for validating document and key-value management features.
+
+### **2. Monitoring Stack (Observability)**
+*   **Prometheus & Grafana:** Powers the real-time health charts in the Monitor Dashboard.
+*   **Exporters:** Dedicated bridge containers (`postgres-exporter`, `mysql-exporter`) that feed database performance metrics into Prometheus.
+
+### **3. Infrastructure**
+*   **Virtual Network:** All components reside on a private Docker network (`docker_default`), allowing the backend to communicate securely with all instances.
+
+---
+
 ## Quick Start
 
 ### 1. Setup
