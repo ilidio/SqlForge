@@ -58,6 +58,24 @@ SqlForge/
 
 ---
 
+## 🤖 AI Configuration
+
+To enable the built-in AI SQL Assistant, you need to provide your Google Gemini credentials.
+
+1.  Locate the `.gemini_config.json` file in the project root.
+2.  Add your API key and preferred model:
+    ```json
+    {
+      "gemini_api_key": "YOUR_API_KEY",
+      "gemini_model": "gemini-1.5-flash"
+    }
+    ```
+3.  The backend will automatically detect these settings and enable AI features across the application.
+
+*Note: The `.gemini_config.json` file is explicitly listed in `.gitignore` to keep your credentials secure and prevent them from being committed to the repository.*
+
+---
+
 ## Quick Start
 
 ### 1. Setup

@@ -33,3 +33,6 @@ backend/*.db
 .idea/
 *.swp
 *.swo
+
+# AI Config
+.gemini_config.json

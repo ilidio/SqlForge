@@ -87,13 +87,13 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
                 <Tabs defaultValue="ai" className="w-full flex flex-col h-[400px]">
                     <div className="px-6 py-2 bg-muted/10 border-b">
                         <TabsList className="bg-transparent h-10 p-0 gap-6">
-                            <TabsTrigger value="ai" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-10 gap-2">
+                            <TabsTrigger value="ai" data-testid="tab-ai" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-10 gap-2">
                                 <Sparkles size={14} /> AI Assistants
                             </TabsTrigger>
-                            <TabsTrigger value="general" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-10 gap-2">
+                            <TabsTrigger value="general" data-testid="tab-general" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-10 gap-2">
                                 <SettingsIcon size={14} /> General
                             </TabsTrigger>
-                            <TabsTrigger value="security" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-10 gap-2">
+                            <TabsTrigger value="security" data-testid="tab-security" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-10 gap-2">
                                 <Shield size={14} /> Security
                             </TabsTrigger>
                         </TabsList>
