@@ -53,3 +53,33 @@ def test_transfer_all_tables(sqlite_dbs):
     assert result["status"] == "success"
     assert len(result["details"]) == 1 # only 'users' table
     assert result["details"][0]["table"] == "users"
+
+from unittest.mock import patch, MagicMock
+
+@patch("redis.Redis")
+def test_transfer_mysql_to_redis_mock(mock_redis, tmp_path):
+    # Setup source SQL (SQLite representing MySQL for simplicity in test)
+    source_path = str(tmp_path / "sql_src.db")
+    conn = sqlite3.connect(source_path)
+    conn.execute("CREATE TABLE users (id INT, name TEXT)")
+    conn.execute("INSERT INTO users VALUES (1, 'Ilidio')")
+    conn.commit()
+    conn.close()
+    
+    source_config = ConnectionConfig(id="s", type="sqlite", filepath=source_path, database="s", name="MySQL")
+    target_config = ConnectionConfig(id="r", type="redis", host="localhost", port=6379, name="Redis")
+    
+    mock_r = MagicMock()
+    mock_redis.return_value = mock_r
+    pipe = mock_r.pipeline.return_value
+    
+    # Run transfer
+    result = transfer_data(source_config, target_config, "users")
+    
+    assert result["status"] == "success"
+    assert result["rows_transferred"] == 1
+    # Verify Redis SET was called (via pipeline)
+    pipe.set.assert_called_once()
+    args, _ = pipe.set.call_args
+    assert "users:1" in args[0]
+    assert "Ilidio" in args[1]
