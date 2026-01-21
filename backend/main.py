@@ -205,16 +205,29 @@ def generate_sql(request: AIRequest):
         model = genai.GenerativeModel(request.model)
         
         # 3. Construct Prompt
+        db_type_map = {
+            'redis': 'Redis (Output should be raw Redis commands like SET, GET, KEYS, etc.)',
+            'mongodb': 'MongoDB (Output should be just the collection name to find, or collection.find({...}) syntax)',
+            'postgresql': 'PostgreSQL',
+            'mysql': 'MySQL',
+            'sqlite': 'SQLite',
+            'mssql': 'SQL Server',
+            'oracle': 'Oracle'
+        }
+        db_desc = db_type_map.get(config.type, config.type)
+
         system_prompt = f"""
-        You are a SQL expert. Convert the user's natural language request into a valid SQL query.
+        You are a database expert. Convert the user's natural language request into a valid query for {db_desc}.
         
-        Database Schema:
+        Database Metadata/Schema:
         {schema_context}
         
         Rules:
-        - Return ONLY the SQL query. No markdown formatting (like ```sql), no explanations.
-        - Use standard SQL compatible with the database type if possible (currently mostly SQLite).
-        - If the request is ambiguous, make a reasonable guess based on column names.
+        - Return ONLY the query/command. No markdown formatting (like ```sql), no explanations.
+        - For Redis, return the full command (e.g., SET key value).
+        - For MongoDB, return either the collection name to list it, or a find query (e.g., users.find({{"age": {{"$gt": 18}}}})).
+        - For SQL, return a valid SQL statement.
+        - If the request is ambiguous, make a reasonable guess based on the metadata provided.
         """
         
         full_prompt = f"{system_prompt}\n\nUser Request: {request.prompt}"

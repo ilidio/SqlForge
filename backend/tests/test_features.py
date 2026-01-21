@@ -10,6 +10,8 @@ client = TestClient(app)
 
 @pytest.fixture
 def setup_feature_db(tmp_path):
+    import internal_db
+    internal_db.init_db()
     db_file = str(tmp_path / "features.db")
     conn = sqlite3.connect(db_file)
     conn.execute("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")

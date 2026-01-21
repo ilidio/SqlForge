@@ -212,8 +212,17 @@ function App() {
   };
 
   const handleSelectTable = async (connId: string, tableName: string) => {
-    const maxRows = localStorage.getItem('max_rows') || '100';
-    const sql = `SELECT * FROM ${tableName} LIMIT ${maxRows}`;
+    const conn = connections.find(c => c.id === connId);
+    let query = "";
+    
+    if (conn?.type === 'redis') {
+        query = "KEYS *";
+    } else if (conn?.type === 'mongodb') {
+        query = tableName;
+    } else {
+        const maxRows = localStorage.getItem('max_rows') || '100';
+        query = `SELECT * FROM ${tableName} LIMIT ${maxRows}`;
+    }
     
     const tabId = Math.random().toString(36).substring(7);
     const newTab: Tab = {
@@ -229,7 +238,7 @@ function App() {
     setActiveTabId(tabId);
 
     try {
-        const res = await api.runQuery(connId, sql);
+        const res = await api.runQuery(connId, query);
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: res } : t));
     } catch (e: any) {
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: { columns: [], rows: [], error: e.message } } : t));

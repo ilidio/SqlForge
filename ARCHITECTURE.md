@@ -20,7 +20,7 @@ SqlForge follows a modular, service-oriented desktop architecture with a local b
                │               │               │
 ┌───────▼───────┐ ┌─────▼─────┐ ┌───────▼───────┐
 │ DB Drivers     │ │ Sync Core  │ │ AI Providers  │
-│ async drivers  │ │ (pysqlsync)│ │ (Gemini/etc)  │
+│ async drivers  │ │ (sqlglot)  │ │ (Gemini/etc)  │
 └───────────────┘ └─────────────┘ └───────────────┘
 ```
 
@@ -35,7 +35,7 @@ Core services:
 - **Metadata Explorer:** Introspects tables, views, and procedures.
 - **Query Engine:** Executes SQL and streams results.
 - **AI Proxy Layer:** Context-aware prompt engineering for Gemini.
-- **Sync Engine (Pro):** Powered by `pysqlsync` for schema/data diffs.
+- **Sync Engine:** Powered by `sqlglot` for schema/data diffs.
 
 ---
 
@@ -68,9 +68,9 @@ The frontend is responsible for:
 
 ---
 
-## Sync Engine (Roadmap Pro)
+## Sync Engine
 
-Schema and data synchronization are implemented via a dedicated service using `pysqlsync`.
+Schema and data synchronization are implemented via a dedicated service using `sqlglot`.
 This service exposes a structured API:
 - `diff(source, target)`: Computes structural differences.
 - `generate_plan(diff)`: Creates a migration script.

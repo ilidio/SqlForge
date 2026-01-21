@@ -7,6 +7,7 @@ from pymongo import MongoClient
 import csv
 import json
 import io
+import shlex
 
 # --- SQL HANDLING ---
 
@@ -35,10 +36,31 @@ def get_engine(config: ConnectionConfig) -> Engine:
     return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 
 def get_schema_context(config: ConnectionConfig) -> str:
-    # ... (Keep existing implementation for SQL)
-    if config.type in ['redis', 'mongodb']:
-        return "NoSQL Database (Schema not available)"
-    
+    if config.type == 'redis':
+        try:
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, decode_responses=True)
+            keys = r.keys("*")[:20] # Sample 20 keys
+            context = ["Redis Database", f"Total Keys: {len(r.keys('*'))}", "Sample Keys:"]
+            for k in keys:
+                context.append(f"- {k} ({r.type(k)})")
+            return "\n".join(context)
+        except:
+            return "Redis Database (Metadata unavailable)"
+            
+    if config.type == 'mongodb':
+        try:
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=2000)
+            db = client[config.database]
+            collections = db.list_collection_names()
+            context = ["MongoDB Database", f"Database: {config.database}", "Collections:"]
+            for col in collections:
+                sample = db[col].find_one()
+                fields = list(sample.keys()) if sample else []
+                context.append(f"- {col} (Fields: {', '.join(fields)})")
+            return "\n".join(context)
+        except:
+            return "MongoDB Database (Metadata unavailable)"
+
     try:
         engine = get_engine(config)
         inspector = inspect(engine)
@@ -176,17 +198,24 @@ def get_schema_details(config: ConnectionConfig) -> list[TableSchema]:
     return schemas
 
 def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
-    if config.type in ['redis', 'mongodb']:
-        # Basic MongoDB collection drop support
-        if config.type == 'mongodb' and object_type == 'collection':
-            try:
-                client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
-                db = client[config.database]
+    try:
+        if config.type == 'redis':
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            if object_name.upper() == 'FLUSHDB':
+                r.flushdb()
+                return {"success": True, "error": None}
+            r.delete(object_name)
+            return {"success": True, "error": None}
+
+        if config.type == 'mongodb':
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            db = client[config.database]
+            if object_type == 'collection':
                 db.drop_collection(object_name)
                 return {"success": True, "error": None}
-            except Exception as e:
-                return {"success": False, "error": str(e)}
-        return {"success": False, "error": f"Drop not yet supported for {config.type}"}
+            return {"success": False, "error": f"Drop not supported for object type: {object_type}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
     
     engine = get_engine(config)
     # Map UI types to SQL keywords
@@ -202,9 +231,57 @@ def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
         return {"success": False, "error": str(e)}
 
 def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
-    if config.type in ['redis', 'mongodb']:
-        return [{"success": False, "error": f"Batch operations not yet supported for {config.type}"}]
-    
+    if config.type == 'redis':
+        try:
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            pipe = r.pipeline()
+            for op in operations:
+                if op['type'] == 'update':
+                    # For Redis, update is just SET. If we have multiple fields, we might use HSET
+                    # but since the UI sends table-like updates, we assume key-value or JSON
+                    key = op['where'].get('key')
+                    if key:
+                        pipe.set(key, json.dumps(op['data']))
+                elif op['type'] == 'delete':
+                    key = op['where'].get('key')
+                    if key:
+                        pipe.delete(key)
+            pipe.execute()
+            return [{"success": True, "error": None}] * len(operations)
+        except Exception as e:
+            return [{"success": False, "error": str(e)}]
+
+    if config.type == 'mongodb':
+        try:
+            from pymongo import UpdateOne, DeleteOne
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            db = client[config.database]
+            
+            bulk_ops = []
+            for op in operations:
+                col = op['table']
+                if op['type'] == 'update':
+                    bulk_ops.append(UpdateOne(op['where'], {"$set": op['data']}))
+                elif op['type'] == 'delete':
+                    bulk_ops.append(DeleteOne(op['where']))
+            
+            if bulk_ops:
+                # Group by collection since bulk_write is per collection
+                from collections import defaultdict
+                col_ops = defaultdict(list)
+                # Need to know which op belongs to which collection... 
+                # actually 'operations' usually target one table in the UI flow.
+                # We'll assume the first op's table for now or group them.
+                for op, b_op in zip(operations, bulk_ops):
+                    col_ops[op['table']].append(b_op)
+                
+                for col, ops in col_ops.items():
+                    db[col].bulk_write(ops)
+                    
+            return [{"success": True, "error": None}] * len(operations)
+        except Exception as e:
+            return [{"success": False, "error": str(e)}]
+
     engine = get_engine(config)
     results = []
     
@@ -252,19 +329,42 @@ def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
 def execute_query(config: ConnectionConfig, query_str: str):
     if config.type == 'redis':
         try:
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
-            # Extremely basic implementation: Assume query is a command like "GET key"
-            parts = query_str.split()
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, decode_responses=True)
+            
+            # Intercept SQL-like select for Redis
+            if query_str.upper().strip().startswith("SELECT"):
+                keys = r.keys("*")
+                rows = [{"key": k, "type": r.type(k)} for k in keys]
+                return {"columns": ["key", "type"], "rows": rows, "error": None}
+
+            try:
+                parts = shlex.split(query_str)
+            except ValueError:
+                # Fallback to simple split if shlex fails (e.g. unbalanced quotes)
+                parts = query_str.split()
+
+            if not parts:
+                return {"columns": [], "rows": [], "error": "Empty query"}
+            
             cmd = parts[0].upper()
             if cmd == "KEYS":
-                keys = r.keys(parts[1] if len(parts) > 1 else "*")
-                rows = [{"key": k.decode('utf-8'), "type": r.type(k).decode('utf-8')} for k in keys]
+                pattern = parts[1] if len(parts) > 1 else "*"
+                keys = r.keys(pattern)
+                rows = [{"key": k, "type": r.type(k)} for k in keys]
                 return {"columns": ["key", "type"], "rows": rows, "error": None}
-            elif cmd == "GET":
-                 val = r.get(parts[1])
-                 return {"columns": ["value"], "rows": [{"value": val.decode('utf-8') if val else None}], "error": None}
+            
+            # Support generic Redis commands
+            res = r.execute_command(*parts)
+            
+            # Format result for the grid
+            if isinstance(res, list):
+                rows = [{"item": str(i)} for i in res]
+                return {"columns": ["item"], "rows": rows, "error": None}
+            elif isinstance(res, dict):
+                rows = [{"key": k, "value": str(v)} for k, v in res.items()]
+                return {"columns": ["key", "value"], "rows": rows, "error": None}
             else:
-                return {"columns": [], "rows": [], "error": "Only KEYS and GET supported in basic mode"}
+                return {"columns": ["result"], "rows": [{"result": str(res)}], "error": None}
         except Exception as e:
             return {"columns": [], "rows": [], "error": str(e)}
 
@@ -311,8 +411,62 @@ def execute_query(config: ConnectionConfig, query_str: str):
         return {"columns": [], "rows": [], "error": str(e)}
 
 def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes, file_format: str, mode: str = 'append'):
-    if config.type in ['redis', 'mongodb']:
-        return {"success": False, "error": f"Import not yet supported for {config.type}"}
+    def get_rows():
+        if file_format == 'csv':
+            content_str = file_contents.decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(content_str))
+            for row in csv_reader:
+                yield {k: (None if v == '' else v) for k, v in row.items()}
+        elif file_format == 'json':
+            content_str = file_contents.decode('utf-8')
+            data = json.loads(content_str)
+            if isinstance(data, list):
+                for row in data:
+                    yield row
+            else:
+                raise Exception("Invalid JSON format. Expected list of objects.")
+
+    if config.type == 'redis':
+        try:
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            if mode == 'truncate':
+                r.flushdb()
+            
+            pipe = r.pipeline()
+            total = 0
+            for row in get_rows():
+                key = row.get('key') or row.get('id') or f"imported:{total}"
+                pipe.set(key, json.dumps(row) if len(row) > 2 or 'value' not in row else row.get('value', ''))
+                total += 1
+                if total % 1000 == 0:
+                    pipe.execute()
+                    pipe = r.pipeline()
+            pipe.execute()
+            return {"success": True, "message": f"Imported {total} keys into Redis"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    if config.type == 'mongodb':
+        try:
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            db = client[config.database]
+            if mode == 'truncate':
+                db[table_name].delete_many({})
+            
+            batch = []
+            total = 0
+            for row in get_rows():
+                batch.append(row)
+                if len(batch) >= 1000:
+                    db[table_name].insert_many(batch)
+                    total += len(batch)
+                    batch = []
+            if batch:
+                db[table_name].insert_many(batch)
+                total += len(batch)
+            return {"success": True, "message": f"Imported {total} documents into {table_name}"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     engine = get_engine(config)
     batch_size = 1000
@@ -365,8 +519,48 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
         return {"success": False, "error": f"Database error: {str(e)}"}
 
 def stream_export_data(config: ConnectionConfig, table_name: str, file_format: str):
-    if config.type in ['redis', 'mongodb']:
-        raise Exception(f"Export not yet supported for {config.type}")
+    if config.type == 'redis':
+        def generate_redis():
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, decode_responses=True)
+            keys = r.scan_iter("*")
+            if file_format == 'csv':
+                yield "key,value\n"
+                for k in keys:
+                    v = r.get(k)
+                    yield f'"{k}","{str(v).replace(chr(34), chr(34)+chr(34))}"\n'
+            else: # JSON
+                yield "[\n"
+                first = True
+                for k in keys:
+                    if not first: yield ",\n"
+                    yield json.dumps({"key": k, "value": r.get(k)})
+                    first = False
+                yield "\n]"
+        return generate_redis()
+
+    if config.type == 'mongodb':
+        def generate_mongo():
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            db = client[config.database]
+            cursor = db[table_name].find({})
+            if file_format == 'csv':
+                first_doc = db[table_name].find_one()
+                if not first_doc: return
+                columns = list(first_doc.keys())
+                yield ",".join(columns) + "\n"
+                for doc in cursor:
+                    doc['_id'] = str(doc['_id'])
+                    yield ",".join([f'"{str(doc.get(c, "")).replace(chr(34), chr(34)+chr(34))}"' for c in columns]) + "\n"
+            else: # JSON
+                yield "[\n"
+                first = True
+                for doc in cursor:
+                    if not first: yield ",\n"
+                    doc['_id'] = str(doc['_id'])
+                    yield json.dumps(doc)
+                    first = False
+                yield "\n]"
+        return generate_mongo()
 
     engine = get_engine(config)
     
@@ -409,6 +603,27 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
     return generate()
 
 def alter_table(config: ConnectionConfig, request: AlterTableRequest):
+    if config.type == 'redis':
+        try:
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            if request.action == 'rename_table': # We map 'rename_table' to rename key for Redis
+                r.rename(request.table_name, request.new_table_name)
+                return {"success": True, "message": f"Renamed key {request.table_name} to {request.new_table_name}"}
+            return {"success": False, "error": f"Action {request.action} not supported for Redis"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    if config.type == 'mongodb':
+        try:
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            db = client[config.database]
+            if request.action == 'rename_table':
+                db[request.table_name].rename(request.new_table_name)
+                return {"success": True, "message": f"Renamed collection {request.table_name} to {request.new_table_name}"}
+            return {"success": False, "error": f"Action {request.action} not supported for MongoDB"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     if config.type in ['redis', 'mongodb']:
         return {"success": False, "error": f"Schema modification not supported for {config.type}"}
 

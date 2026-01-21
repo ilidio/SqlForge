@@ -92,8 +92,8 @@ export const ObjectBrowserTab: React.FC<Props> = ({ connectionId, onOpenTable, o
             {filtered.map((item, i) => (
               <div 
                 key={i}
-                onClick={() => item.type === 'table' && onOpenTable(item.name)}
-                onDoubleClick={() => item.type === 'table' && onOpenTable(item.name)}
+                onClick={() => ['table', 'kv', 'collection'].includes(item.type) && onOpenTable(item.name)}
+                onDoubleClick={() => ['table', 'kv', 'collection'].includes(item.type) && onOpenTable(item.name)}
                 className={cn(
                   "group cursor-pointer transition-all",
                   viewMode === 'grid' 

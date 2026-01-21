@@ -18,7 +18,7 @@
 - **US-012:** SQL Formatting (standardizing keywords).
 - **US-013:** Query execution history.
 
-## Data Editing (Pro)
+## Data Editing
 - **US-020:** Inline editing of table results in the grid.
 - **US-021:** Batch update/delete with SQL preview.
 - **US-022:** Copy/Paste compatibility with Excel/Google Sheets.
@@ -27,7 +27,7 @@
 - **US-030:** Export query results to CSV, JSON, and SQL Inserts.
 - **US-031:** Import datasets from CSV/JSON into existing tables.
 
-## Synchronization (Pro)
+## Synchronization
 - **US-050:** Compare schemas between two databases.
 - **US-051:** Synchronize data between production and staging environments.
 - **US-052:** Generate safe migration scripts.

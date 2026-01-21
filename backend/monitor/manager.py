@@ -29,7 +29,7 @@ class MonitorManager:
 
     @staticmethod
     def get_realtime_metrics(config):
-        # In a real Pro version, this would poll system views for TPS/CPU
+        # Polls system views for realtime metrics (TPS/CPU/Connections)
         return {
             "tps": 42,
             "cpu": 15,

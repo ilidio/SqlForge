@@ -130,7 +130,7 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
                                 </section>
 
                                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Pro Tip</h4>
+                                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">Advanced Tip</h4>
                                     <p className="text-xs">Right-click on any table in the Object Browser to quickly generate SELECT statements or open the Data Transfer wizard.</p>
                                 </div>
 
