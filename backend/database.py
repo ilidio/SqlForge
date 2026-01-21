@@ -432,46 +432,62 @@ def execute_query(config: ConnectionConfig, query_str: str):
             if query_str in all_dbs:
                 db = client[query_str]
                 cols = db.list_collection_names()
-                rows = [{"collection": c} for c in cols]
+                # Return db.collection format so context is preserved on next click
+                rows = [{"collection": f"{query_str}.{c}"} for c in cols]
                 return {"columns": ["collection"], "rows": rows, "error": None}
 
-            db = client[config.database]
+            # Parse query parts: db.collection.method(args)
+            parts = query_str.split('.')
             
-            # Case 1: Just collection name or database.collection
-            if "." not in query_str:
-                col_name = query_str
-                # Check if it might be a DB that we didn't catch above?
-                cursor = db[col_name].find({}).limit(50)
-            else:
-                # Case 2: collection.method({...})
-                col_name = query_str.split('.')[0]
-                method_part = query_str[len(col_name)+1:] # e.g. "find({"a":1})"
-                
-                method = "find"
-                args_str = "{}"
-                
-                if "(" in method_part and method_part.endswith(")"):
-                    method = method_part.split('(')[0]
-                    args_str = method_part[len(method)+1:-1]
-                
-                # Parse args_str as JSON/Dict safely
-                try:
-                    # literal_eval is safer than eval but more flexible than json.loads for JS-like objects
-                    args = ast.literal_eval(args_str) if args_str.strip() else {}
-                except:
-                    # Fallback to json.loads if literal_eval fails (requires strict JSON)
-                    try:
-                        args = json.loads(args_str) if args_str.strip() else {}
-                    except:
-                        args = {}
+            # Default to config database
+            db_name = config.database if config.database not in ["default", ""] else "admin"
+            col_name = ""
+            method = "find"
+            args_str = "{}"
 
-                if method == "aggregate":
-                    cursor = db[col_name].aggregate(args if isinstance(args, list) else [args])
-                elif method == "count":
-                    count = db[col_name].count_documents(args)
-                    return {"columns": ["count"], "rows": [{"count": count}], "error": None}
-                else: # Default to find
-                    cursor = db[col_name].find(args).limit(50)
+            if len(parts) == 1:
+                # Just collection name
+                col_name = parts[0]
+            elif len(parts) >= 2:
+                # Check if first part is a database
+                if parts[0] in all_dbs:
+                    db_name = parts[0]
+                    col_name = parts[1]
+                    if len(parts) > 2:
+                        method_part = ".".join(parts[2:])
+                else:
+                    # First part is collection, second is method
+                    col_name = parts[0]
+                    method_part = ".".join(parts[1:])
+            
+            db = client[db_name]
+            
+            # Handle method and args if present (e.g. find({...}))
+            if "." in query_str and "(" in query_str:
+                # Extract method and args from the full string after the collection name
+                # find the first dot after col_name
+                col_index = query_str.find(col_name)
+                method_area = query_str[col_index + len(col_name) + 1:]
+                if "(" in method_area:
+                    method = method_area.split('(')[0]
+                    args_str = method_area[method_area.find('(')+1:method_area.rfind(')')]
+
+            # Parse args
+            try:
+                args = ast.literal_eval(args_str) if args_str.strip() else {}
+            except:
+                try:
+                    args = json.loads(args_str) if args_str.strip() else {}
+                except:
+                    args = {}
+
+            if method == "aggregate":
+                cursor = db[col_name].aggregate(args if isinstance(args, list) else [args])
+            elif method == "count":
+                count = db[col_name].count_documents(args)
+                return {"columns": ["count"], "rows": [{"count": count}], "error": None}
+            else:
+                cursor = db[col_name].find(args).limit(50)
             
             rows = []
             for doc in cursor:
@@ -479,7 +495,7 @@ def execute_query(config: ConnectionConfig, query_str: str):
                 rows.append(doc)
             
             if not rows:
-                return {"columns": [], "rows": [], "error": "No documents found"}
+                return {"columns": [], "rows": [], "error": f"No documents found in {db_name}.{col_name}"}
             
             columns = list(rows[0].keys())
             return {"columns": columns, "rows": rows, "error": None}
