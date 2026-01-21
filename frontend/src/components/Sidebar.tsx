@@ -249,13 +249,13 @@ export const Sidebar: React.FC<Props> = ({
                                         <ContextMenuItem onClick={() => onOpenQuery(conn.id!)} className="gap-2">
                                             <Terminal size={14} /> New Query Tab
                                         </ContextMenuItem>
-                                        <ContextMenuItem onClick={() => onOpenBuilder?.(conn.id!)} className="gap-2">
+                                        <ContextMenuItem onClick={() => onOpenBuilder?.(conn.id!)} className="gap-2" disabled={conn.type === 'redis'}>
                                             <Wand2 size={14} /> Visual Query Builder
                                         </ContextMenuItem>
                                         <ContextMenuItem onClick={() => onOpenBrowser(conn.id!)} className="gap-2">
                                             <DbIcon size={14} /> Open Browser
                                         </ContextMenuItem>
-                                        <ContextMenuItem onClick={() => onOpenDiagram(conn.id!)} className="gap-2">
+                                        <ContextMenuItem onClick={() => onOpenDiagram(conn.id!)} className="gap-2" disabled={conn.type === 'redis'}>
                                             <Workflow size={14} /> Visualize Schema
                                         </ContextMenuItem>
                                         <ContextMenuSeparator />

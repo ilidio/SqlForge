@@ -274,8 +274,35 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     return items
 
 def get_schema_details(config: ConnectionConfig) -> list[TableSchema]:
-    if config.type in ['redis', 'mongodb']:
+    if config.type == 'redis':
         return []
+
+    if config.type == 'mongodb':
+        try:
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=2000)
+            db = client[config.database]
+            schemas = []
+            for col_name in db.list_collection_names():
+                # Sample a document to infer "columns"
+                sample = db[col_name].find_one()
+                columns = []
+                if sample:
+                    for key, val in sample.items():
+                        columns.append(ColumnInfo(
+                            name=key,
+                            type=type(val).__name__,
+                            nullable=True,
+                            primary_key=(key == "_id")
+                        ))
+                schemas.append(TableSchema(
+                    name=col_name,
+                    columns=columns,
+                    foreign_keys=[]
+                ))
+            return schemas
+        except Exception as e:
+            print(f"Error inspecting MongoDB schema: {e}")
+            return []
 
     engine = get_engine(config)
     inspector = inspect(engine)
