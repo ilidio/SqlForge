@@ -8,24 +8,93 @@ import csv
 import json
 import io
 import shlex
+from sshtunnel import SSHTunnelForwarder
+import time
+
+# --- SSH TUNNEL MANAGER ---
+
+class TunnelManager:
+    def __init__(self):
+        self.tunnels = {}
+
+    def get_tunnel(self, config: ConnectionConfig):
+        if not config.ssh or not config.ssh.enabled:
+            return None
+        
+        tunnel_id = f"{config.id}_tunnel"
+        
+        # Check if tunnel exists and is active
+        if tunnel_id in self.tunnels:
+            tunnel = self.tunnels[tunnel_id]
+            if tunnel.is_active:
+                return tunnel
+            else:
+                # Restart if inactive
+                tunnel.stop()
+        
+        # Create new tunnel
+        ssh_config = config.ssh
+        
+        pkey = ssh_config.private_key_path if ssh_config.private_key_path else None
+        password = ssh_config.password if ssh_config.password else None
+        
+        # Determine remote bind address
+        # For a standard DB connection string host:port, that is where the SSH server should forward to.
+        remote_bind_address = (config.host, config.port)
+        
+        try:
+            tunnel = SSHTunnelForwarder(
+                (ssh_config.host, ssh_config.port),
+                ssh_username=ssh_config.username,
+                ssh_password=password,
+                ssh_pkey=pkey,
+                remote_bind_address=remote_bind_address
+            )
+            tunnel.start()
+            self.tunnels[tunnel_id] = tunnel
+            return tunnel
+        except Exception as e:
+            print(f"Failed to start SSH tunnel: {e}")
+            raise e
+
+    def stop_tunnel(self, config: ConnectionConfig):
+        tunnel_id = f"{config.id}_tunnel"
+        if tunnel_id in self.tunnels:
+            self.tunnels[tunnel_id].stop()
+            del self.tunnels[tunnel_id]
+
+tunnel_manager = TunnelManager()
 
 # --- SQL HANDLING ---
 
-def get_connection_url(config: ConnectionConfig) -> str:
+def get_connection_url(config: ConnectionConfig, local_port: int = None) -> str:
+    host = "127.0.0.1" if local_port else config.host
+    port = local_port if local_port else config.port
+
     if config.type == 'sqlite':
         return f"sqlite:///{config.filepath}"
     elif config.type == 'postgresql':
-        return f"postgresql+psycopg2://{config.username}:{config.password}@{config.host}:{config.port}/{config.database}"
+        return f"postgresql+psycopg2://{config.username}:{config.password}@{host}:{port}/{config.database}"
     elif config.type == 'mysql':
-        return f"mysql+pymysql://{config.username}:{config.password}@{config.host}:{config.port}/{config.database}"
+        return f"mysql+pymysql://{config.username}:{config.password}@{host}:{port}/{config.database}"
     elif config.type == 'mssql':
-        return f"mssql+pymssql://{config.username}:{config.password}@{config.host}:{config.port}/{config.database}"
+        return f"mssql+pymssql://{config.username}:{config.password}@{host}:{port}/{config.database}"
     elif config.type == 'oracle':
-        return f"oracle+oracledb://{config.username}:{config.password}@{config.host}:{config.port}/?service_name={config.database}"
+        return f"oracle+oracledb://{config.username}:{config.password}@{host}:{port}/?service_name={config.database}"
     return ""
 
 def get_engine(config: ConnectionConfig) -> Engine:
-    url = get_connection_url(config)
+    local_port = None
+    
+    # Handle SSH Tunnel
+    if config.ssh and config.ssh.enabled:
+        tunnel = tunnel_manager.get_tunnel(config)
+        if tunnel:
+            local_port = tunnel.local_bind_port
+            print(f"Using SSH Tunnel: 127.0.0.1:{local_port} -> {config.host}:{config.port}")
+
+    url = get_connection_url(config, local_port)
+    
     # Add connect_args for timeout where possible
     connect_args = {}
     if config.type == 'postgresql':
@@ -38,7 +107,14 @@ def get_engine(config: ConnectionConfig) -> Engine:
 def get_schema_context(config: ConnectionConfig) -> str:
     if config.type == 'redis':
         try:
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, decode_responses=True)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0, decode_responses=True)
             keys = r.keys("*")[:20] # Sample 20 keys
             context = ["Redis Database", f"Total Keys: {len(r.keys('*'))}", "Sample Keys:"]
             for k in keys:
@@ -49,7 +125,14 @@ def get_schema_context(config: ConnectionConfig) -> str:
             
     if config.type == 'mongodb':
         try:
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=2000)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/", serverSelectionTimeoutMS=2000)
             db = client[config.database]
             collections = db.list_collection_names()
             context = ["MongoDB Database", f"Database: {config.database}", "Collections:"]
@@ -82,17 +165,26 @@ def get_schema_context(config: ConnectionConfig) -> str:
 
 def test_connection(config: ConnectionConfig):
     try:
+        # Tunnel Setup for Test
+        host = config.host
+        port = config.port
+        
+        if config.ssh and config.ssh.enabled:
+            tunnel = tunnel_manager.get_tunnel(config)
+            host = "127.0.0.1"
+            port = tunnel.local_bind_port
+
         if config.type == 'redis':
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, socket_connect_timeout=5)
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0, socket_connect_timeout=5)
             r.ping()
             return True, "Connected to Redis successfully"
         elif config.type == 'mongodb':
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=5000)
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/", serverSelectionTimeoutMS=5000)
             client.admin.command('ping')
             return True, "Connected to MongoDB successfully"
         else:
             # SQL
-            engine = get_engine(config)
+            engine = get_engine(config) # get_engine handles tunnel logic internally now
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             return True, "Connected successfully"
@@ -103,7 +195,14 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     if config.type == 'redis':
         # ... (Keep existing Redis implementation)
         try:
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0)
             try:
                 dbs_count = int(r.config_get("databases")["databases"])
             except:
@@ -111,7 +210,7 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
             
             items = []
             for i in range(dbs_count):
-                r_db = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=i)
+                r_db = redis.Redis(host=host, port=port, password=config.password or None, db=i)
                 if i == 0 or r_db.dbsize() > 0:
                     items.append(TableInfo(name=f"DB{i}", type="kv"))
             return items
@@ -120,7 +219,14 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     
     if config.type == 'mongodb':
         try:
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=2000)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/", serverSelectionTimeoutMS=2000)
             
             # If database is "default" or empty, list all user databases
             if config.database in ["default", "", "admin", "local", "config"]:
@@ -223,7 +329,14 @@ def get_schema_details(config: ConnectionConfig) -> list[TableSchema]:
 def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
     try:
         if config.type == 'redis':
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+            
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0)
             if object_name.upper() == 'FLUSHDB':
                 r.flushdb()
                 return {"success": True, "error": None}
@@ -231,7 +344,14 @@ def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
             return {"success": True, "error": None}
 
         if config.type == 'mongodb':
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/")
             db = client[config.database]
             if object_type == 'collection':
                 db.drop_collection(object_name)
@@ -256,7 +376,14 @@ def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
 def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
     if config.type == 'redis':
         try:
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0)
             pipe = r.pipeline()
             for op in operations:
                 if op['type'] == 'update':
@@ -277,7 +404,14 @@ def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
     if config.type == 'mongodb':
         try:
             from pymongo import UpdateOne, DeleteOne
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+            
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/")
             db = client[config.database]
             
             bulk_ops = []
@@ -359,7 +493,14 @@ def execute_query(config: ConnectionConfig, query_str: str):
                 db_id = int(actual_query[2:])
                 actual_query = "KEYS *" # Default action for DB selection
             
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=db_id, decode_responses=True)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=db_id, decode_responses=True)
             
             # Intercept SQL-like select for Redis
             if actual_query.upper().startswith("SELECT"):
@@ -423,7 +564,14 @@ def execute_query(config: ConnectionConfig, query_str: str):
     if config.type == 'mongodb':
         try:
             import ast
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=2000)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/", serverSelectionTimeoutMS=2000)
             
             query_str = query_str.strip()
             
@@ -535,7 +683,14 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
 
     if config.type == 'redis':
         try:
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0)
             if mode == 'truncate':
                 r.flushdb()
             
@@ -555,7 +710,14 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
 
     if config.type == 'mongodb':
         try:
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/")
             db = client[config.database]
             if mode == 'truncate':
                 db[table_name].delete_many({})
@@ -628,7 +790,14 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
 def stream_export_data(config: ConnectionConfig, table_name: str, file_format: str):
     if config.type == 'redis':
         def generate_redis():
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, decode_responses=True)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+            
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0, decode_responses=True)
             keys = r.scan_iter("*")
             if file_format == 'csv':
                 yield "key,value\n"
@@ -647,7 +816,14 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
 
     if config.type == 'mongodb':
         def generate_mongo():
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/")
             db = client[config.database]
             cursor = db[table_name].find({})
             if file_format == 'csv':
@@ -712,7 +888,14 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
 def alter_table(config: ConnectionConfig, request: AlterTableRequest):
     if config.type == 'redis':
         try:
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            r = redis.Redis(host=host, port=port, password=config.password or None, db=0)
             if request.action == 'rename_table': # We map 'rename_table' to rename key for Redis
                 r.rename(request.table_name, request.new_table_name)
                 return {"success": True, "message": f"Renamed key {request.table_name} to {request.new_table_name}"}
@@ -722,7 +905,14 @@ def alter_table(config: ConnectionConfig, request: AlterTableRequest):
 
     if config.type == 'mongodb':
         try:
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
+            host = config.host
+            port = config.port
+            if config.ssh and config.ssh.enabled:
+                tunnel = tunnel_manager.get_tunnel(config)
+                host = "127.0.0.1"
+                port = tunnel.local_bind_port
+
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/")
             db = client[config.database]
             if request.action == 'rename_table':
                 db[request.table_name].rename(request.new_table_name)

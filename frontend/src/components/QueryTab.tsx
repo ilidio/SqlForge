@@ -1,13 +1,13 @@
-import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, useRef, useCallback } from 'react';
 import { api } from '../api';
 import { toast } from 'sonner';
 import { ResultsTable, type ResultsTableHandle } from './ResultsTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'sql-formatter';
 import { cn } from '@/lib/utils';
 import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet } from 'lucide-react';
+import Editor, { useMonaco } from '@monaco-editor/react';
 
 interface Props {
   connectionId: string;
@@ -27,7 +27,6 @@ export interface QueryTabHandle {
 
 export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '' }, ref) => {
   const [sql, setSql] = useState(initialSql);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultsTableRef = useRef<ResultsTableHandle>(null);
   const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,6 +37,10 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   const [apiKey, setApiKey] = useState('');
   const [aiModel, setAiModel] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Editor Ref
+  const editorRef = useRef<any>(null);
+  const monaco = useMonaco();
 
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
@@ -56,6 +59,48 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     localStorage.setItem('ai_model', model);
   };
 
+  const fetchSchemaForAutocomplete = useCallback(async () => {
+    if (!monaco) return;
+    try {
+      const tables = await api.getTables(connectionId);
+      // Basic suggestion generation
+      const suggestions = tables.map((t: any) => ({
+        label: t.name,
+        kind: monaco.languages.CompletionItemKind.Class,
+        insertText: t.name,
+        detail: t.type
+      }));
+
+      // Register completion provider
+      // Note: In a real app, you'd want to dispose of this when component unmounts
+      // or key it by connectionId to avoid duplicates.
+      monaco.languages.registerCompletionItemProvider('sql', {
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+          
+          return {
+            suggestions: suggestions.map((s: any) => ({ ...s, range }))
+          };
+        }
+      });
+      
+    } catch (e) {
+      console.error("Failed to load schema for autocomplete", e);
+    }
+  }, [connectionId, monaco]);
+
+  useEffect(() => {
+    if (monaco) {
+        fetchSchemaForAutocomplete();
+    }
+  }, [monaco, fetchSchemaForAutocomplete]);
+
   const runQuery = async () => {
     setLoading(true);
     try {
@@ -69,12 +114,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   };
 
   const formatSql = () => {
-    try {
-      const formatted = format(sql, { language: 'sql', keywordCase: 'upper' });
-      setSql(formatted);
-    } catch (e) {
-      console.error("Format error", e);
-    }
+    editorRef.current?.getAction('editor.action.formatDocument').run();
   };
 
   const toggleAi = (open?: boolean) => {
@@ -82,21 +122,15 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   };
 
   const undo = () => {
-    if (textareaRef.current) {
-        textareaRef.current.focus();
-        document.execCommand('undo');
-    }
+    editorRef.current?.trigger('source', 'undo', {});
   };
 
   const redo = () => {
-    if (textareaRef.current) {
-        textareaRef.current.focus();
-        document.execCommand('redo');
-    }
+    editorRef.current?.trigger('source', 'redo', {});
   };
 
   const focus = () => {
-    textareaRef.current?.focus();
+    editorRef.current?.focus();
   };
 
   const focusResults = () => {
@@ -128,6 +162,9 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     saveQuery
   }));
 
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor;
+  };
 
   const generateSQL = async () => {
     if (!apiKey || !aiModel) {
@@ -206,6 +243,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   };
 
   const getInferredTable = (query: string) => {
+    if (!query) return undefined;
     const q = query.trim().toUpperCase();
     // Heuristic: If it's a complex query, don't allow editing
     if (q.includes(' JOIN ') || 
@@ -343,14 +381,24 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
           </div>
         </div>
         
-        <div className="flex-1 relative bg-background/50">
-            <textarea
-                ref={textareaRef}
-                className="absolute inset-0 w-full h-full bg-transparent text-foreground p-4 font-mono text-sm resize-none outline-none leading-relaxed selection:bg-primary/20"
+        <div className="flex-1 relative bg-background/50 overflow-hidden">
+            <Editor
+                height="100%"
+                defaultLanguage="sql"
                 value={sql}
-                onChange={e => setSql(e.target.value)}
-                spellCheck={false}
-                placeholder="-- Write your SQL query here..."
+                onChange={(value) => setSql(value || '')}
+                theme="vs-dark" // We can toggle this based on app theme if needed
+                onMount={handleEditorDidMount}
+                options={{
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, monospace',
+                    padding: { top: 16 },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    renderLineHighlight: 'none',
+                    contextmenu: true,
+                }}
             />
         </div>
       </div>

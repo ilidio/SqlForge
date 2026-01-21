@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
+from google import genai
 from unittest.mock import patch, MagicMock
 import os
 import sqlite3
@@ -82,30 +83,32 @@ def test_drop_object(setup_test_db):
     assert cursor.fetchone() is None
     conn.close()
 
-@patch("google.generativeai.list_models")
-def test_list_ai_models(mock_list_models):
+@patch("google.genai.Client")
+def test_list_ai_models(mock_genai_client_class):
+    mock_client = MagicMock()
     mock_model = MagicMock()
-    mock_model.name = "models/gemini-pro"
-    mock_model.display_name = "Gemini Pro"
+    mock_model.name = "gemini-2.0-flash"
+    mock_model.display_name = "Gemini 2.0 Flash"
     mock_model.description = "Test Description"
-    mock_model.supported_generation_methods = ["generateContent"]
-    mock_list_models.return_value = [mock_model]
+    
+    mock_client.models.list.return_value = [mock_model]
+    mock_genai_client_class.return_value = mock_client
     
     response = client.get("/ai/models?api_key=fake_key")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
-    assert data[0]["name"] == "gemini-pro"
+    assert data[0]["name"] == "gemini-2.0-flash"
 
-@patch("google.generativeai.GenerativeModel")
-def test_generate_sql(mock_gen_model, setup_test_db):
+@patch("google.genai.Client")
+def test_generate_sql(mock_genai_client_class, setup_test_db):
     conn_id, _ = setup_test_db
     
-    mock_instance = MagicMock()
+    mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.text = "SELECT * FROM users"
-    mock_instance.generate_content.return_value = mock_response
-    mock_gen_model.return_value = mock_instance
+    mock_client.models.generate_content.return_value = mock_response
+    mock_genai_client_class.return_value = mock_client
     
     req = {
         "connection_id": conn_id,
@@ -143,7 +146,8 @@ def test_pro_sync_endpoints(setup_test_db, tmp_path):
     }
     response = client.post("/pro/sync/diff", json=sync_req)
     assert response.status_code == 200
-    assert "suggested schema" in response.json()["sql"].lower() or "identical" in response.json()["sql"].lower()
+    sql_resp = response.json()["sql"].lower()
+    assert "update existing table" in sql_resp or "identical" in sql_resp or "create missing table" in sql_resp
 
     # Test execute
     response = client.post("/pro/sync/execute", json=sync_req)

@@ -1,6 +1,14 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+class SSHConfig(BaseModel):
+    enabled: bool = False
+    host: str
+    port: int = 22
+    username: str
+    password: Optional[str] = None
+    private_key_path: Optional[str] = None
+
 class ConnectionConfig(BaseModel):
     id: Optional[str] = None
     name: str
@@ -11,6 +19,7 @@ class ConnectionConfig(BaseModel):
     password: Optional[str] = None
     database: Optional[str] = None
     filepath: Optional[str] = None # For SQLite
+    ssh: Optional[SSHConfig] = None
 
 class QueryRequest(BaseModel):
     connection_id: str

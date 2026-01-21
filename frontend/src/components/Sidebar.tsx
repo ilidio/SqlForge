@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, type ConnectionConfig } from '../api';
-import { Database, Table, Plus, RefreshCw, History, Clock, ChevronRight, ChevronDown, Layers, FileText, Key, Box, Search, Settings, Zap, Cpu, Terminal } from 'lucide-react';
+import { Database, Table, Plus, RefreshCw, History, Clock, ChevronRight, ChevronDown, Layers, FileText, Key, Box, Search, Settings, Zap, Cpu, Terminal, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -20,6 +20,7 @@ interface Props {
   onOpenBrowser: (connId: string) => void;
   onOpenDiagram: (connId: string) => void;
   onOpenSchema: (connId: string, tableName: string) => void;
+  onOpenBuilder?: (connId: string) => void;
   onNewConnection: () => void;
   onEditConnection: (conn: ConnectionConfig) => void;
   onDeleteConnection: (connId: string) => void;
@@ -50,6 +51,7 @@ export const Sidebar: React.FC<Props> = ({
     onOpenBrowser, 
     onOpenDiagram,
     onOpenSchema,
+    onOpenBuilder,
     onNewConnection, 
     onEditConnection,
     onDeleteConnection,
@@ -246,6 +248,9 @@ export const Sidebar: React.FC<Props> = ({
                                     <ContextMenuContent className="w-48">
                                         <ContextMenuItem onClick={() => onOpenQuery(conn.id!)} className="gap-2">
                                             <Terminal size={14} /> New Query Tab
+                                        </ContextMenuItem>
+                                        <ContextMenuItem onClick={() => onOpenBuilder?.(conn.id!)} className="gap-2">
+                                            <Wand2 size={14} /> Visual Query Builder
                                         </ContextMenuItem>
                                         <ContextMenuItem onClick={() => onOpenBrowser(conn.id!)} className="gap-2">
                                             <DbIcon size={14} /> Open Browser

@@ -7,7 +7,7 @@ typing-extensions
 python-multipart
 pytest
 httpx
-google-generativeai
+google-genai-sdk
 psycopg2-binary
 pymysql
 pymssql
@@ -16,3 +16,4 @@ redis
 pymongo
 sqlglot
 pysqlsync
+sshtunnel

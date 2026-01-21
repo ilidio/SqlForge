@@ -9,7 +9,7 @@ import time
 from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest
 import database
 import internal_db
-import google.generativeai as genai
+from google import genai
 from pro import sync as pro_sync
 from pro import transfer as pro_transfer
 
@@ -179,15 +179,16 @@ def get_history_endpoint():
 @app.get("/ai/models")
 def list_ai_models(api_key: str):
     try:
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
         models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                models.append({
-                    "name": m.name.replace('models/', ''),
-                    "display_name": m.display_name,
-                    "description": m.description
-                })
+        for m in client.models.list():
+            # In new SDK, capabilities might be different, 
+            # but usually we want those that support content generation
+            models.append({
+                "name": m.name,
+                "display_name": m.display_name or m.name,
+                "description": m.description or ""
+            })
         return models
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -202,9 +203,8 @@ def generate_sql(request: AIRequest):
         # 1. Get Schema Context
         schema_context = database.get_schema_context(config)
         
-        # 2. Configure Gemini
-        genai.configure(api_key=request.api_key)
-        model = genai.GenerativeModel(request.model)
+        # 2. Initialize Client
+        client = genai.Client(api_key=request.api_key)
         
         # 3. Construct Prompt
         db_type_map = {
@@ -235,7 +235,10 @@ def generate_sql(request: AIRequest):
         full_prompt = f"{system_prompt}\n\nUser Request: {request.prompt}"
         
         # 4. Generate Content
-        response = model.generate_content(full_prompt)
+        response = client.models.generate_content(
+            model=request.model,
+            contents=full_prompt
+        )
         
         # 5. Clean up response
         sql = response.text.strip()
