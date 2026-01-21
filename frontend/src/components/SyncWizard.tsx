@@ -33,7 +33,7 @@ export default function SyncWizard({ open, onOpenChange, mode }: SyncWizardProps
         setLoading(true);
         setStep(3);
         try {
-            const result = await api.diffSchemas(sourceId, targetId);
+            const result = await api.diffSchemas(sourceId, targetId, mode);
             setDiffResult(result.sql);
         } catch (e: any) {
             setDiffResult(`-- Error: ${e.response?.data?.detail || e.message}`);
@@ -46,7 +46,7 @@ export default function SyncWizard({ open, onOpenChange, mode }: SyncWizardProps
         if (!sourceId || !targetId) return;
         setLoading(true);
         try {
-            const result = await api.executeSync(sourceId, targetId, false);
+            const result = await api.executeSync(sourceId, targetId, mode, false);
             if (result.status === 'success') {
                 toast.success(result.message);
                 onOpenChange(false);

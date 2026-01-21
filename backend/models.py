@@ -51,6 +51,7 @@ class AIRequest(BaseModel):
 class SyncRequest(BaseModel):
     source_connection_id: str
     target_connection_id: str
+    mode: Optional[str] = "structure" # "structure", "data", "transfer"
     dry_run: bool = True
 
 class ColumnDefinition(BaseModel):

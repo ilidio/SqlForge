@@ -11,6 +11,7 @@ import database
 import internal_db
 import google.generativeai as genai
 from pro import sync as pro_sync
+from pro import transfer as pro_transfer
 
 app = FastAPI(title="SqlForge API")
 
@@ -258,6 +259,9 @@ def schema_diff(request: SyncRequest):
     if not source or not target:
         raise HTTPException(status_code=404, detail="Source or target connection not found")
     
+    if request.mode in ['transfer', 'data']:
+        return {"sql": f"-- DATA TRANSFER PLAN\n-- Source: {source.name}\n-- Target: {target.name}\n-- Action: Transfer all rows for all matching tables.\n-- Note: This will append data to existing tables."}
+    
     result = pro_sync.diff_schemas(source, target)
     return {"sql": result["sql_text"]}
 
@@ -268,6 +272,11 @@ def schema_sync(request: SyncRequest):
     
     if not source or not target:
         raise HTTPException(status_code=404, detail="Source or target connection not found")
+    
+    if request.mode in ['transfer', 'data']:
+        if request.dry_run:
+            return {"status": "success", "message": "Dry run completed for data transfer."}
+        return pro_transfer.transfer_all_tables(source, target)
     
     result = pro_sync.sync_schemas(source, target, dry_run=request.dry_run)
     return result
