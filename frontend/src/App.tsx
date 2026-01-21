@@ -486,6 +486,7 @@ function App() {
                         setTabs(prev => prev.map(t => t.id === activeTab.id ? { ...t, data: res } : t));
                     }}
                     onSelectKey={async (key) => {
+                        const conn = connections.find(c => c.id === activeTab.connectionId);
                         const tabId = Math.random().toString(36).substring(7);
                         const newTab: Tab = {
                           id: tabId,

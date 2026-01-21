@@ -101,19 +101,16 @@ def test_connection(config: ConnectionConfig):
 
 def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     if config.type == 'redis':
+        # ... (Keep existing Redis implementation)
         try:
             r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
-            # Try to get number of databases from CONFIG GET databases
             try:
                 dbs_count = int(r.config_get("databases")["databases"])
             except:
-                dbs_count = 16 # Default
+                dbs_count = 16 
             
             items = []
             for i in range(dbs_count):
-                # We could check if DB has keys, but that's slow. 
-                # Let's just return DBs that have keys or the first few.
-                # For simplicity in UI, we'll return all that have data + DB0
                 r_db = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=i)
                 if i == 0 or r_db.dbsize() > 0:
                     items.append(TableInfo(name=f"DB{i}", type="kv"))
@@ -122,9 +119,18 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
             return [TableInfo(name="DB0", type="kv")]
     
     if config.type == 'mongodb':
-        client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
-        db = client[config.database]
-        return [TableInfo(name=col, type="collection") for col in db.list_collection_names()]
+        try:
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=2000)
+            
+            # If database is "default" or empty, list all user databases
+            if config.database in ["default", "", "admin", "local", "config"]:
+                dbs = client.list_database_names()
+                return [TableInfo(name=db, type="collection") for db in dbs if db not in ["admin", "local", "config"]]
+            
+            db = client[config.database]
+            return [TableInfo(name=col, type="collection") for col in db.list_collection_names()]
+        except:
+            return []
 
     # SQL
     engine = get_engine(config)
@@ -417,14 +423,25 @@ def execute_query(config: ConnectionConfig, query_str: str):
     if config.type == 'mongodb':
         try:
             import ast
-            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
-            db = client[config.database]
+            client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/", serverSelectionTimeoutMS=2000)
             
             query_str = query_str.strip()
             
-            # Case 1: Just collection name
+            # Smart Discovery: If the query matches a database name, list its collections
+            all_dbs = client.list_database_names()
+            if query_str in all_dbs:
+                db = client[query_str]
+                cols = db.list_collection_names()
+                rows = [{"collection": c} for c in cols]
+                return {"columns": ["collection"], "rows": rows, "error": None}
+
+            db = client[config.database]
+            
+            # Case 1: Just collection name or database.collection
             if "." not in query_str:
-                cursor = db[query_str].find({}).limit(50)
+                col_name = query_str
+                # Check if it might be a DB that we didn't catch above?
+                cursor = db[col_name].find({}).limit(50)
             else:
                 # Case 2: collection.method({...})
                 col_name = query_str.split('.')[0]

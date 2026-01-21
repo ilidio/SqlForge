@@ -90,6 +90,7 @@ def discover_local_databases():
                     "type": db_type,
                     "host": "localhost",
                     "port": port,
+                    "database": "testdb" if db_type == "mongodb" else "default",
                     "name": f"Discovered {db_type.capitalize()} (localhost:{port})"
                 })
     return discovered

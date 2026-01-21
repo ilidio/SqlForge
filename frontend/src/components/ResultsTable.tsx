@@ -228,15 +228,15 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
                           ) : (
                               <div className={cn(
                                 "px-2 py-2 truncate",
-                                dbType === 'redis' && col === 'key' && "text-primary font-bold cursor-pointer hover:underline"
+                                ((dbType === 'redis' && col === 'key') || (dbType === 'mongodb' && col === 'collection')) && "text-primary font-bold cursor-pointer hover:underline"
                               )}
                               onClick={() => {
-                                if (dbType === 'redis' && col === 'key' && onSelectKey) {
+                                if (((dbType === 'redis' && col === 'key') || (dbType === 'mongodb' && col === 'collection')) && onSelectKey) {
                                     onSelectKey(String(displayValue));
                                 }
                               }}
                               >
-                                {isNull ? <span className="text-muted-foreground/40 italic font-sans text-[10px]">NULL</span> : String(displayValue)}
+                                {isNull ? <span className="text-muted-foreground/40 italic font-sans text-[10px]">NULL</span> : <span className="flex-1">{String(displayValue)}</span>}
                               </div>
                           )}
                           {isChanged && !isEditing && (<div className="absolute top-0 right-0 w-1.5 h-1.5 bg-amber-500 rounded-bl-sm" title={`Original: ${String(row[col])}`} />)}
