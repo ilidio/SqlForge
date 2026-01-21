@@ -54,6 +54,7 @@ export const api = {
   getConnections: () => axios.get<ConnectionConfig[]>(`${API_URL}/connections`).then(r => r.data),
   saveConnection: (config: ConnectionConfig) => axios.post<ConnectionConfig>(`${API_URL}/connections`, config).then(r => r.data),
   deleteConnection: (connId: string) => axios.delete(`${API_URL}/connections/${connId}`).then(r => r.data),
+  deleteAllConnections: () => axios.delete(`${API_URL}/connections`).then(r => r.data),
   discoverConnections: () => axios.get<Partial<ConnectionConfig>[]>(`${API_URL}/connections/discover`).then(r => r.data),
   getAiModels: (apiKey: string) => axios.get<{name: string, display_name: string, description: string}[]>(`${API_URL}/ai/models`, { params: { api_key: apiKey } }).then(r => r.data),
   testConnection: (config: ConnectionConfig) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/test`, config).then(r => r.data),

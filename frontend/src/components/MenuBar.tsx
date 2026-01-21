@@ -58,6 +58,7 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
             { label: 'Edit Connection...', icon: <Edit2 size={14}/>, onClick: () => onAction?.('edit_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
             { label: 'Duplicate Connection', onClick: () => onAction?.('duplicate_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
             { label: 'Delete Connection', icon: <X size={14} className="text-destructive"/>, onClick: () => onAction?.('delete_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'Remove All Connections', icon: <Trash2 size={14} className="text-destructive"/>, onClick: () => onAction?.('delete_all_connections'), disabled: !hasConnections },
             { divider: true },
             { label: 'Refresh Metadata', icon: <Zap size={14} className="text-amber-500"/>, onClick: () => onAction?.('refresh_metadata'), disabled: !hasSelectedConnection && !hasActiveTab },
             { label: 'Properties', icon: <Settings size={14}/>, onClick: () => onAction?.('connection_properties'), disabled: !hasSelectedConnection && !hasActiveTab },

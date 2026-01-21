@@ -54,6 +54,11 @@ def delete_connection_endpoint(conn_id: str):
     internal_db.delete_connection(conn_id)
     return {"status": "deleted"}
 
+@app.delete("/connections")
+def delete_all_connections_endpoint():
+    internal_db.delete_all_connections()
+    return {"status": "all deleted"}
+
 @app.get("/connections/discover")
 def discover_local_databases():
     import socket

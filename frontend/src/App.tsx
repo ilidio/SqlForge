@@ -60,6 +60,7 @@ function App() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [connectionToDelete, setConnectionToDelete] = useState<string | null>(null);
+  const [isConfirmDeleteAllOpen, setIsConfirmDeleteAllOpen] = useState(false);
   const [isConfirmDropOpen, setIsConfirmDropOpen] = useState(false);
   const [objectToDrop, setObjectToDrop] = useState<{connId: string, name: string, type: string} | null>(null);
 
@@ -274,6 +275,20 @@ function App() {
       }
   };
 
+  const handleDeleteAllConfirm = async () => {
+      try {
+          await api.deleteAllConnections();
+          setRefreshTrigger(prev => prev + 1);
+          setTabs([]);
+          setSelectedConnectionId(null);
+          toast.success("All connections removed");
+      } catch {
+          toast.error("Error removing all connections");
+      } finally {
+          setIsConfirmDeleteAllOpen(false);
+      }
+  };
+
   const handleDropConfirm = async () => {
       if (!objectToDrop) return;
       try {
@@ -353,6 +368,9 @@ function App() {
               const connId = activeTab?.connectionId || selectedConnectionId;
               setConnectionToDelete(connId || null);
               setIsConfirmDeleteOpen(true);
+          }
+          if (action === 'delete_all_connections') {
+              setIsConfirmDeleteAllOpen(true);
           }
           if (['connect', 'reconnect', 'refresh_metadata'].includes(action) && (selectedConnectionId || activeTab?.connectionId)) {
               setRefreshTrigger(prev => prev + 1);
@@ -615,6 +633,16 @@ function App() {
         confirmText="Delete"
         variant="destructive"
         onConfirm={handleDeleteConfirm}
+      />
+
+      <ConfirmDialog 
+        open={isConfirmDeleteAllOpen}
+        onOpenChange={setIsConfirmDeleteAllOpen}
+        title="Remove All Connections"
+        description="Are you sure you want to remove ALL saved connections? This will clear your explorer list. This action cannot be undone."
+        confirmText="Remove All"
+        variant="destructive"
+        onConfirm={handleDeleteAllConfirm}
       />
 
       <ConfirmDialog 

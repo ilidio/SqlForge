@@ -52,6 +52,13 @@ def delete_connection(conn_id: str):
     conn.commit()
     conn.close()
 
+def delete_all_connections():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM connections")
+    conn.commit()
+    conn.close()
+
 def add_history(connection_id: str, sql: str, duration_ms: float, status: str):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
