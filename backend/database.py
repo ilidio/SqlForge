@@ -370,17 +370,45 @@ def execute_query(config: ConnectionConfig, query_str: str):
 
     if config.type == 'mongodb':
         try:
+            import ast
             client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
             db = client[config.database]
-            # Hacky "SQL-like" wrapper for Mongo for now. Format: "collection.find({})"
-            # Real Navicat has a GUI builder, here we assume raw JS-like syntax or simple "collection" name
-            col_name = query_str.split('.')[0]
-            if "find" in query_str:
-                # very unsafe eval-like parsing or just dump all
-                cursor = db[col_name].find({}).limit(50)
+            
+            query_str = query_str.strip()
+            
+            # Case 1: Just collection name
+            if "." not in query_str:
+                cursor = db[query_str].find({}).limit(50)
             else:
-                 # Just dump collection
-                 cursor = db[query_str].find({}).limit(50)
+                # Case 2: collection.method({...})
+                col_name = query_str.split('.')[0]
+                method_part = query_str[len(col_name)+1:] # e.g. "find({"a":1})"
+                
+                method = "find"
+                args_str = "{}"
+                
+                if "(" in method_part and method_part.endswith(")"):
+                    method = method_part.split('(')[0]
+                    args_str = method_part[len(method)+1:-1]
+                
+                # Parse args_str as JSON/Dict safely
+                try:
+                    # literal_eval is safer than eval but more flexible than json.loads for JS-like objects
+                    args = ast.literal_eval(args_str) if args_str.strip() else {}
+                except:
+                    # Fallback to json.loads if literal_eval fails (requires strict JSON)
+                    try:
+                        args = json.loads(args_str) if args_str.strip() else {}
+                    except:
+                        args = {}
+
+                if method == "aggregate":
+                    cursor = db[col_name].aggregate(args if isinstance(args, list) else [args])
+                elif method == "count":
+                    count = db[col_name].count_documents(args)
+                    return {"columns": ["count"], "rows": [{"count": count}], "error": None}
+                else: # Default to find
+                    cursor = db[col_name].find(args).limit(50)
             
             rows = []
             for doc in cursor:

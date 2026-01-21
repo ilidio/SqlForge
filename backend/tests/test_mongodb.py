@@ -78,3 +78,24 @@ def test_execute_batch_mutations_mongo(mock_client, mongo_config):
     assert len(result) == 2
     assert all(r["success"] for r in result)
     mock_db["users"].bulk_write.assert_called_once()
+
+@patch("database.MongoClient")
+def test_execute_query_mongo_filter(mock_client, mongo_config):
+    mock_db = MagicMock()
+    mock_client.return_value.__getitem__.return_value = mock_db
+    mock_cursor_data = [
+        {"_id": "1", "name": "Alice", "role": "Admin"}
+    ]
+    # Mock find() to return an object that has a limit() method
+    mock_find_result = MagicMock()
+    mock_find_result.limit.return_value = mock_cursor_data
+    mock_db["users"].find.return_value = mock_find_result
+    
+    # Test query with filter
+    result = execute_query(mongo_config, "users.find({'role': 'Admin'})")
+    
+    assert result["error"] is None
+    assert result["rows"][0]["name"] == "Alice"
+    # Verify that the filter was actually passed to the find call
+    mock_db["users"].find.assert_called_once_with({'role': 'Admin'})
+    mock_find_result.limit.assert_called_with(50)
