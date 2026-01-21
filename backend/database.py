@@ -101,8 +101,25 @@ def test_connection(config: ConnectionConfig):
 
 def get_tables(config: ConnectionConfig) -> list[TableInfo]:
     if config.type == 'redis':
-        # For Redis, "tables" are just a concept we mock as Keyspaces or Types, but let's just return one "DB0"
-        return [TableInfo(name="Keys (DB0)", type="kv")]
+        try:
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0)
+            # Try to get number of databases from CONFIG GET databases
+            try:
+                dbs_count = int(r.config_get("databases")["databases"])
+            except:
+                dbs_count = 16 # Default
+            
+            items = []
+            for i in range(dbs_count):
+                # We could check if DB has keys, but that's slow. 
+                # Let's just return DBs that have keys or the first few.
+                # For simplicity in UI, we'll return all that have data + DB0
+                r_db = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=i)
+                if i == 0 or r_db.dbsize() > 0:
+                    items.append(TableInfo(name=f"DB{i}", type="kv"))
+            return items
+        except:
+            return [TableInfo(name="DB0", type="kv")]
     
     if config.type == 'mongodb':
         client = MongoClient(f"mongodb://{config.username}:{config.password}@{config.host}:{config.port}/" if config.username else f"mongodb://{config.host}:{config.port}/")
@@ -329,19 +346,48 @@ def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
 def execute_query(config: ConnectionConfig, query_str: str):
     if config.type == 'redis':
         try:
-            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=0, decode_responses=True)
+            # Handle DB selection from query string if it matches DB[0-9]+
+            db_id = 0
+            actual_query = query_str.strip()
+            if actual_query.startswith("DB") and actual_query[2:].isdigit():
+                db_id = int(actual_query[2:])
+                actual_query = "KEYS *" # Default action for DB selection
+            
+            r = redis.Redis(host=config.host, port=config.port, password=config.password or None, db=db_id, decode_responses=True)
             
             # Intercept SQL-like select for Redis
-            if query_str.upper().strip().startswith("SELECT"):
+            if actual_query.upper().startswith("SELECT"):
                 keys = r.keys("*")
                 rows = [{"key": k, "type": r.type(k)} for k in keys]
                 return {"columns": ["key", "type"], "rows": rows, "error": None}
 
+            # Smart Fetch: If it's a single word and matches a key, get its content based on type
+            if " " not in actual_query and actual_query not in ["KEYS", "FLUSHDB"]:
+                key_type = r.type(actual_query)
+                if key_type == "string":
+                    val = r.get(actual_query)
+                    return {"columns": ["value"], "rows": [{"value": val}], "error": None}
+                elif key_type == "hash":
+                    val = r.hgetall(actual_query)
+                    rows = [{"field": k, "value": str(v)} for k, v in val.items()]
+                    return {"columns": ["field", "value"], "rows": rows, "error": None}
+                elif key_type == "list":
+                    val = r.lrange(actual_query, 0, -1)
+                    rows = [{"index": i, "value": v} for i, v in enumerate(val)]
+                    return {"columns": ["index", "value"], "rows": rows, "error": None}
+                elif key_type == "set":
+                    val = r.smembers(actual_query)
+                    rows = [{"value": v} for v in val]
+                    return {"columns": ["value"], "rows": rows, "error": None}
+                elif key_type == "zset":
+                    val = r.zrange(actual_query, 0, -1, withscores=True)
+                    rows = [{"value": v, "score": s} for v, s in val]
+                    return {"columns": ["value", "score"], "rows": rows, "error": None}
+
             try:
-                parts = shlex.split(query_str)
+                parts = shlex.split(actual_query)
             except ValueError:
-                # Fallback to simple split if shlex fails (e.g. unbalanced quotes)
-                parts = query_str.split()
+                parts = actual_query.split()
 
             if not parts:
                 return {"columns": [], "rows": [], "error": "Empty query"}

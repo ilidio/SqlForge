@@ -216,7 +216,7 @@ function App() {
     let query = "";
     
     if (conn?.type === 'redis') {
-        query = "KEYS *";
+        query = tableName; // e.g. "DB0"
     } else if (conn?.type === 'mongodb') {
         query = tableName;
     } else {
@@ -471,11 +471,38 @@ function App() {
                     key={activeTab.id}
                     data={activeTab.data || {columns: [], rows: [], error: null}} 
                     connectionId={activeTab.connectionId}
+                    dbType={connections.find(c => c.id === activeTab.connectionId)?.type}
                     tableName={activeTab.content}
                     onRefresh={async () => {
-                        const maxRows = localStorage.getItem('max_rows') || '100';
-                        const res = await api.runQuery(activeTab.connectionId, `SELECT * FROM ${activeTab.content} LIMIT ${maxRows}`);
+                        const conn = connections.find(c => c.id === activeTab.connectionId);
+                        let q = "";
+                        if (conn?.type === 'redis') q = activeTab.content!;
+                        else if (conn?.type === 'mongodb') q = activeTab.content!;
+                        else {
+                            const maxRows = localStorage.getItem('max_rows') || '100';
+                            q = `SELECT * FROM ${activeTab.content} LIMIT ${maxRows}`;
+                        }
+                        const res = await api.runQuery(activeTab.connectionId, q);
                         setTabs(prev => prev.map(t => t.id === activeTab.id ? { ...t, data: res } : t));
+                    }}
+                    onSelectKey={async (key) => {
+                        const tabId = Math.random().toString(36).substring(7);
+                        const newTab: Tab = {
+                          id: tabId,
+                          title: key,
+                          type: 'table',
+                          connectionId: activeTab.connectionId,
+                          content: key,
+                          data: { columns: [], rows: [], error: null }
+                        };
+                        setTabs(prev => [...prev, newTab]);
+                        setActiveTabId(tabId);
+                        try {
+                            const res = await api.runQuery(activeTab.connectionId, key);
+                            setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: res } : t));
+                        } catch (e: any) {
+                            setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: { columns: [], rows: [], error: e.message } } : t));
+                        }
                     }}
                   />
                 )}

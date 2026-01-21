@@ -9,19 +9,21 @@ import { api } from '../api';
 interface Props {
   connectionId?: string;
   tableName?: string;
+  dbType?: string;
   data: {
     columns: string[];
     rows: Record<string, unknown>[];
     error: string | null;
   } | null;
   onRefresh?: () => void;
+  onSelectKey?: (key: string) => void;
 }
 
 export interface ResultsTableHandle {
     focus: () => void;
 }
 
-export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, data, onRefresh }, ref) => {
+export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, dbType, data, onRefresh, onSelectKey }, ref) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [editingCell, setEditingCell] = useState<{rowIndex: number, column: string} | null>(null);
   const [changes, setChanges] = useState<Record<string, unknown>>({}); 
@@ -224,7 +226,18 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
                                 onKeyDown={handleKeyDown}
                               />
                           ) : (
-                              <div className="px-2 py-2 truncate">{isNull ? <span className="text-muted-foreground/40 italic font-sans text-[10px]">NULL</span> : String(displayValue)}</div>
+                              <div className={cn(
+                                "px-2 py-2 truncate",
+                                dbType === 'redis' && col === 'key' && "text-primary font-bold cursor-pointer hover:underline"
+                              )}
+                              onClick={() => {
+                                if (dbType === 'redis' && col === 'key' && onSelectKey) {
+                                    onSelectKey(String(displayValue));
+                                }
+                              }}
+                              >
+                                {isNull ? <span className="text-muted-foreground/40 italic font-sans text-[10px]">NULL</span> : String(displayValue)}
+                              </div>
                           )}
                           {isChanged && !isEditing && (<div className="absolute top-0 right-0 w-1.5 h-1.5 bg-amber-500 rounded-bl-sm" title={`Original: ${String(row[col])}`} />)}
                       </td>
