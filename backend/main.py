@@ -258,8 +258,8 @@ def schema_diff(request: SyncRequest):
     if not source or not target:
         raise HTTPException(status_code=404, detail="Source or target connection not found")
     
-    sql = pro_sync.diff_schemas(source, target)
-    return {"sql": sql}
+    result = pro_sync.diff_schemas(source, target)
+    return {"sql": result["sql_text"]}
 
 @app.post("/pro/sync/execute")
 def schema_sync(request: SyncRequest):

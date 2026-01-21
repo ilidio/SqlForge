@@ -34,7 +34,8 @@ def test_sync_sqlite_to_sqlite(sqlite_dbs):
     )
     
     # 1. Test Diff
-    sql = diff_schemas(source_config, target_config)
+    result = diff_schemas(source_config, target_config)
+    sql = result["sql_text"]
     assert "CREATE TABLE users" in sql
     assert "INTEGER" in sql
     
@@ -59,7 +60,8 @@ def test_sync_identical_schemas(sqlite_dbs, tmp_path):
         id="t1", name="Target", type="sqlite", filepath=target_path, database="target.db"
     )
     
-    sql = diff_schemas(source_config, target_config)
+    result = diff_schemas(source_config, target_config)
+    sql = result["sql_text"]
     assert "identical" in sql.lower()
 
 def test_cross_dialect_transpilation_mock():
@@ -80,7 +82,8 @@ def test_cross_dialect_transpilation_mock():
             # Mock source having a table, target being empty
             mock_reflect.side_effect = ["CREATE TABLE users (id SERIAL PRIMARY KEY);", ""]
             
-            sql = diff_schemas(source_config, target_config)
+            result = diff_schemas(source_config, target_config)
+            sql = result["sql_text"]
             
             assert "Migration from PG (postgresql) to MY (mysql)" in sql
             # Since we mocked reflect_schema_to_sql to return SERIAL (PG), 
