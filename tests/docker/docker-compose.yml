@@ -62,6 +62,15 @@ services:
     container_name: sqlforge-redis
     ports:
       - "6379:6379"
+    volumes:
+      - ./redis/init.redis:/data/init.redis
+    command: >
+      sh -c "redis-server --daemonize yes && 
+             sleep 2 && 
+             cat /data/init.redis | redis-cli --pipe && 
+             redis-cli save && 
+             redis-cli shutdown && 
+             redis-server"
 
   # --- PRO MONITORING STACK ---
   prometheus:
