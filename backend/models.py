@@ -42,10 +42,16 @@ class ForeignKeyInfo(BaseModel):
     referred_table: str
     referred_column: str
 
+class IndexInfo(BaseModel):
+    name: str
+    columns: List[str]
+    unique: bool = False
+
 class TableSchema(BaseModel):
     name: str
     columns: List[ColumnInfo]
     foreign_keys: List[ForeignKeyInfo]
+    indexes: List[IndexInfo] = []
 
 class QueryResult(BaseModel):
     columns: List[str]

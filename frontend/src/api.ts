@@ -80,7 +80,7 @@ export const api = {
   runBatchQueries: (connId: string, operations: any[]) => axios.post<{results: {success: boolean, error: string | null}[]}>(`${API_URL}/query/batch`, { connection_id: connId, operations: operations }).then(r => r.data),
   getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),
   generateSQL: (connId: string, prompt: string, apiKey: string, model: string) => axios.post<{sql: string}>(`${API_URL}/ai/generate`, { connection_id: connId, prompt, api_key: apiKey, model }).then(r => r.data),
-  analyzeQuery: (connId: string, sql: string, apiKey: string, model: string) => axios.post<{source: string, data: any}>(`${API_URL}/pro/index-advisor/analyze`, { connection_id: connId, prompt: sql, api_key: apiKey, model }).then(r => r.data),
+  analyzeQuery: (connId: string, sql: string, apiKey: string, model: string) => axios.post<any>(`${API_URL}/pro/index-advisor/analyze`, { connection_id: connId, prompt: sql, api_key: apiKey, model }).then(r => r.data),
   testVirtualIndex: (connId: string, sql: string, indexDdl: string) => axios.post<any>(`${API_URL}/pro/what-if/analyze`, { connection_id: connId, sql, index_ddl: indexDdl }).then(r => r.data),
   getLocks: (connId: string) => axios.get<{nodes: any[], edges: any[], error?: string}>(`${API_URL}/monitor/locks/${connId}`).then(r => r.data),
   killSession: (connId: string, pid: string) => axios.post<{success: boolean, message: string}>(`${API_URL}/monitor/kill`, { connection_id: connId, pid }).then(r => r.data),

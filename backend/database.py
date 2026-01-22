@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
-from models import ConnectionConfig, TableInfo, ColumnInfo, ForeignKeyInfo, TableSchema, AlterTableRequest, ColumnDefinition
+from models import ConnectionConfig, TableInfo, ColumnInfo, ForeignKeyInfo, TableSchema, AlterTableRequest, ColumnDefinition, IndexInfo
 import os
 import redis
 from pymongo import MongoClient
@@ -342,10 +342,23 @@ def get_schema_details(config: ConnectionConfig) -> list[TableSchema]:
             except Exception as e:
                 print(f"Error reading FKs for {table_name}: {e}")
 
+            # Get Indexes
+            indexes = []
+            try:
+                for idx in inspector.get_indexes(table_name):
+                    indexes.append(IndexInfo(
+                        name=idx['name'],
+                        columns=idx['column_names'],
+                        unique=idx['unique']
+                    ))
+            except Exception as e:
+                print(f"Error reading indexes for {table_name}: {e}")
+
             schemas.append(TableSchema(
                 name=table_name,
                 columns=columns,
-                foreign_keys=fks
+                foreign_keys=fks,
+                indexes=indexes
             ))
             
     except Exception as e:
