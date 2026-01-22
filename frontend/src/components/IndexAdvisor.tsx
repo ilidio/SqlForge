@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Zap, Check, AlertTriangle, Sparkles, Copy, Database } from 'lucide-react';
+import { Loader2, Zap, Check, AlertTriangle, Sparkles, Copy, Database, TestTube, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface IndexAdvisorProps {
@@ -17,6 +17,11 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [applying, setApplying] = useState<string | null>(null);
+    
+    // What-If State
+    const [simulating, setSimulating] = useState<string | null>(null);
+    const [simResult, setSimResult] = useState<any>(null);
+    const [showSimResult, setShowSimResult] = useState(false);
 
     const analyze = async () => {
         setLoading(true);
@@ -25,7 +30,6 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
             const apiKey = localStorage.getItem('gemini_api_key') || '';
             const model = localStorage.getItem('ai_model') || 'gemini-2.0-flash-exp';
             
-            // Note: api.analyzeQuery expects 'prompt' as the second arg which we map to sql
             const data = await api.analyzeQuery(connectionId, sql, apiKey, model);
             
             if (data.error) {
@@ -40,10 +44,10 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
         }
     };
 
-    // Reset when opened with new SQL?
     useEffect(() => {
         if (open) {
             setResult(null);
+            setSimResult(null);
         }
     }, [open, sql]);
 
@@ -52,7 +56,6 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
         try {
             await api.runQuery(connectionId, ddl);
             toast.success("Index created successfully!");
-            // Remove from list
             setResult((prev: any) => ({
                 ...prev,
                 recommendations: prev.recommendations.filter((r: any) => r.ddl !== ddl)
@@ -61,6 +64,24 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
             toast.error("Failed to create index: " + e.message);
         } finally {
             setApplying(null);
+        }
+    };
+
+    const runSimulation = async (ddl: string) => {
+        setSimulating(ddl);
+        setSimResult(null);
+        try {
+            const res = await api.testVirtualIndex(connectionId, sql, ddl);
+            if (res.error) {
+                toast.error("Simulation failed: " + res.error);
+            } else {
+                setSimResult({ ...res, ddl });
+                setShowSimResult(true);
+            }
+        } catch (e: any) {
+            toast.error("Simulation failed: " + e.message);
+        } finally {
+            setSimulating(null);
         }
     };
 
@@ -107,6 +128,7 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
                     {result && (
                         <ScrollArea className="h-full">
                             <div className="p-6 space-y-6">
+                                {/* AI Explanation */}
                                 <div className="bg-background p-5 rounded-xl border shadow-sm space-y-3">
                                     <h3 className="font-semibold flex items-center gap-2 text-primary">
                                         <Sparkles className="w-4 h-4"/> Expert Analysis
@@ -118,6 +140,7 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
                                     </div>
                                 </div>
 
+                                {/* Recommendations */}
                                 <div>
                                     <h3 className="font-semibold mb-4 flex items-center gap-2">
                                         Recommended Actions
@@ -153,20 +176,31 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
                                                                 {rec.reason}
                                                             </div>
                                                         </div>
-                                                        <Button 
-                                                            size="sm" 
-                                                            onClick={() => applyIndex(rec.ddl)}
-                                                            disabled={applying === rec.ddl}
-                                                            className="shrink-0"
-                                                        >
-                                                            {applying === rec.ddl ? (
-                                                                <>
-                                                                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin"/> Creating...
-                                                                </>
-                                                            ) : (
-                                                                "Create Index"
-                                                            )}
-                                                        </Button>
+                                                        <div className="flex gap-2 shrink-0">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                onClick={() => runSimulation(rec.ddl)}
+                                                                disabled={simulating === rec.ddl}
+                                                                className="border bg-background hover:bg-accent"
+                                                            >
+                                                                {simulating === rec.ddl ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <TestTube size={14} className="mr-1.5" />}
+                                                                What-If?
+                                                            </Button>
+                                                            <Button 
+                                                                size="sm" 
+                                                                onClick={() => applyIndex(rec.ddl)}
+                                                                disabled={applying === rec.ddl}
+                                                            >
+                                                                {applying === rec.ddl ? (
+                                                                    <>
+                                                                        <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin"/> Creating...
+                                                                    </>
+                                                                ) : (
+                                                                    "Create"
+                                                                )}
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                     <div className="p-3 bg-slate-950 text-slate-50 font-mono text-[11px] overflow-x-auto flex items-center justify-between group">
                                                         <code>{rec.ddl}</code>
@@ -188,6 +222,59 @@ export function IndexAdvisor({ open, onOpenChange, connectionId, sql }: IndexAdv
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
                 </div>
             </DialogContent>
+
+            {/* Simulation Result Dialog */}
+            <Dialog open={showSimResult} onOpenChange={setShowSimResult}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <TestTube className="text-blue-500" /> Simulation Results
+                        </DialogTitle>
+                        <DialogDescription>
+                            Impact of the virtual index on query cost.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    {simResult && (
+                        <div className="space-y-4 py-2">
+                            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+                                <div className="text-center">
+                                    <div className="text-xs text-muted-foreground uppercase font-bold">Current Cost</div>
+                                    <div className="text-xl font-mono">{simResult.baseline_cost.toFixed(2)}</div>
+                                </div>
+                                <ArrowRight className="text-muted-foreground" />
+                                <div className="text-center">
+                                    <div className="text-xs text-muted-foreground uppercase font-bold">Projected Cost</div>
+                                    <div className="text-xl font-mono text-blue-600 font-bold">{simResult.virtual_cost.toFixed(2)}</div>
+                                </div>
+                            </div>
+
+                            <div className={`p-4 rounded-lg border flex items-center gap-3 ${simResult.improvement_pct > 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-900' : 'bg-amber-50 border-amber-100 text-amber-900'}`}>
+                                {simResult.improvement_pct > 0 ? <Zap className="text-emerald-500" /> : <AlertTriangle className="text-amber-500" />}
+                                <div>
+                                    <div className="font-bold">
+                                        {simResult.improvement_pct > 0 
+                                            ? `${simResult.improvement_pct}% Improvement` 
+                                            : "No Improvement Detected"}
+                                    </div>
+                                    <div className="text-xs opacity-80">
+                                        {simResult.improvement_pct > 0 
+                                            ? "The optimizer would use this index to reduce query cost." 
+                                            : "The optimizer ignored this index. It may not be selective enough."}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="text-[10px] text-muted-foreground text-center">
+                                * Calculated using virtual/hypothetical indexes. No actual index was created.
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={() => setShowSimResult(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Dialog>
     );
 }
