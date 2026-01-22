@@ -51,8 +51,9 @@ def generate_index_recommendations(config: ConnectionConfig, sql_query: str, api
             process_col(col, "WHERE clause filter")
 
     for join in parsed.find_all(exp.Join):
-        if join.on:
-            for col in join.on.find_all(exp.Column):
+        on_clause = join.args.get("on")
+        if on_clause:
+            for col in on_clause.find_all(exp.Column):
                 process_col(col, "JOIN condition")
 
     for order in parsed.find_all(exp.Order):

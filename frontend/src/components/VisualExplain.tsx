@@ -113,7 +113,7 @@ const nodeTypes = {
 };
 
 // --- Parser: Postgres ---
-const parsePostgresPlan = (plan: any): { nodes: Node[], edges: Edge[] } => {
+export const parsePostgresPlan = (plan: any): { nodes: Node[], edges: Edge[] } => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     let idCounter = 0;
@@ -187,7 +187,7 @@ const parsePostgresPlan = (plan: any): { nodes: Node[], edges: Edge[] } => {
 };
 
 // --- Parser: MySQL ---
-const parseMysqlPlan = (plan: any): { nodes: Node[], edges: Edge[] } => {
+export const parseMysqlPlan = (plan: any): { nodes: Node[], edges: Edge[] } => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     let idCounter = 0;

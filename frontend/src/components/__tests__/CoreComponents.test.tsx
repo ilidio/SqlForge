@@ -59,11 +59,13 @@ test('Sidebar renders connections and expands to show tables', async () => {
   const onImportTable = vi.fn();
   const onDropObject = vi.fn();
   const onOpenSettings = vi.fn();
+  const onConnect = vi.fn();
 
   render(
     <ThemeProvider defaultTheme="dark" storageKey="test-theme">
       <Sidebar 
         connections={[{ id: '1', name: 'Test SQLite', type: 'sqlite', database: 'test.db' }]}
+        healthStatuses={{ '1': 'online' }}
         onSelectTable={onSelectTable}
         onOpenQuery={onOpenQuery}
         onOpenBrowser={onOpenBrowser}
@@ -76,6 +78,7 @@ test('Sidebar renders connections and expands to show tables', async () => {
         onImportTable={onImportTable}
         onDropObject={onDropObject}
         onOpenSettings={onOpenSettings}
+        onConnect={onConnect}
       />
     </ThemeProvider>
   );
