@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { 
-  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X, Trash2 
+  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X, Trash2, RefreshCw 
 } from 'lucide-react';
 interface MenuItem {
     label?: string;
@@ -20,67 +20,73 @@ interface MenuProps {
     activeTabType?: string;
     hasSelectedConnection?: boolean;
     hasConnections?: boolean;
+    isConnected?: boolean;
 }
 
-export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTabType, hasSelectedConnection, hasConnections }) => {
+export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTabType, hasSelectedConnection, hasConnections, isConnected }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-    const menus: Record<string, MenuItem[]> = useMemo(() => ({
-        File: [
-            { label: 'New Connection...', icon: <Plus size={14}/>, shortcut: 'Ctrl+N', onClick: () => onAction?.('new_connection') },
+    const menus: Record<string, MenuItem[]> = useMemo(() => {
+        const connectionItems: (MenuItem | false)[] = [
+            isConnected 
+                ? { label: 'Disconnect', icon: <X size={14} className="text-destructive"/>, onClick: () => onAction?.('disconnect'), disabled: !hasSelectedConnection }
+                : { label: 'Connect', icon: <Zap size={14} className="text-emerald-500"/>, onClick: () => onAction?.('connect'), disabled: !hasSelectedConnection },
+            isConnected && { label: 'Reconnect', icon: <RefreshCw size={14} className="text-sky-500"/>, onClick: () => onAction?.('reconnect'), disabled: !hasSelectedConnection },
+            { label: 'Test Connection', onClick: () => onAction?.('test_connection'), disabled: !hasSelectedConnection },
             { divider: true },
-            { label: 'New Query', icon: <Terminal size={14}/>, shortcut: 'Ctrl+Q', onClick: () => onAction?.('new_query'), disabled: !hasSelectedConnection },
-            { label: 'Save Query', icon: <Save size={14}/>, shortcut: 'Ctrl+S', onClick: () => onAction?.('save_query'), disabled: activeTabType !== 'query' },
-            { divider: true },
-            { label: 'Settings', icon: <Settings size={14}/>, shortcut: 'Ctrl+,', onClick: () => onAction?.('open_settings') },
-        ],
-        Edit: [
-            { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => onAction?.('undo'), disabled: activeTabType !== 'query' },
-            { label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => onAction?.('redo'), disabled: activeTabType !== 'query' },
-            { divider: true },
-            { label: 'Format SQL', icon: <Zap size={14}/>, shortcut: 'Ctrl+Shift+F', onClick: () => onAction?.('format_sql'), disabled: activeTabType !== 'query' },
-        ],
-        View: [
-            { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('open_browser'), disabled: !hasSelectedConnection },
-            { label: 'Toggle Sidebar', onClick: () => onAction?.('toggle_sidebar') },
-            { label: 'Query Editor', shortcut: 'F9', onClick: () => onAction?.('focus_editor'), disabled: activeTabType !== 'query' },
-            { label: 'Result Grid', shortcut: 'F10', onClick: () => onAction?.('focus_results'), disabled: !['query', 'table'].includes(activeTabType || '') },
-            { divider: true },
-            { label: 'Full Screen', shortcut: 'F11', onClick: () => onAction?.('toggle_fullscreen') },
-            { label: 'Toggle Dark Mode', onClick: () => onAction?.('toggle_theme') },
-        ],
-        Connection: [
-            { label: 'Connect', icon: <Zap size={14} className="text-emerald-500"/>, onClick: () => onAction?.('connect'), disabled: !hasConnections && !hasActiveTab },
-            { label: 'Disconnect', icon: <X size={14} className="text-destructive"/>, onClick: () => onAction?.('disconnect'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Reconnect', onClick: () => onAction?.('reconnect'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Test Connection', onClick: () => onAction?.('test_connection'), disabled: !hasConnections && !hasActiveTab },
-            { divider: true },
-            { label: 'Edit Connection...', icon: <Edit2 size={14}/>, onClick: () => onAction?.('edit_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Duplicate Connection', onClick: () => onAction?.('duplicate_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Delete Connection', icon: <X size={14} className="text-destructive"/>, onClick: () => onAction?.('delete_connection'), disabled: !hasSelectedConnection && !hasActiveTab },
+            { label: 'Edit Connection...', icon: <Edit2 size={14}/>, onClick: () => onAction?.('edit_connection'), disabled: !hasSelectedConnection },
+            { label: 'Duplicate Connection', onClick: () => onAction?.('duplicate_connection'), disabled: !hasSelectedConnection },
+            { label: 'Delete Connection', icon: <X size={14} className="text-destructive"/>, onClick: () => onAction?.('delete_connection'), disabled: !hasSelectedConnection },
             { label: 'Remove All Connections', icon: <Trash2 size={14} className="text-destructive"/>, onClick: () => onAction?.('delete_all_connections'), disabled: !hasConnections },
             { divider: true },
-            { label: 'Refresh Metadata', icon: <Zap size={14} className="text-amber-500"/>, onClick: () => onAction?.('refresh_metadata'), disabled: !hasSelectedConnection && !hasActiveTab },
-            { label: 'Properties', icon: <Settings size={14}/>, onClick: () => onAction?.('connection_properties'), disabled: !hasSelectedConnection && !hasActiveTab },
-        ],
-        Tools: [
-            { label: 'Data Transfer...', icon: <Database size={14}/>, onClick: () => onAction?.('data_transfer'), disabled: !hasConnections },
-            { label: 'Data Synchronization...', onClick: () => onAction?.('data_sync'), disabled: !hasConnections },
-            { label: 'Structure Synchronization...', onClick: () => onAction?.('struct_sync'), disabled: !hasConnections },
-            { divider: true },
-            { label: 'Backup...', icon: <Save size={14}/>, onClick: () => onAction?.('backup'), disabled: !hasConnections },
-            { label: 'Restore...', onClick: () => onAction?.('restore'), disabled: !hasConnections },
-            { divider: true },
-            { label: 'AI Assistant', icon: <Sparkles size={14} className="text-purple-500"/>, onClick: () => onAction?.('ai_copilot'), disabled: activeTabType !== 'query' },
-            { label: 'Server Monitor', icon: <Cpu size={14}/>, onClick: () => onAction?.('monitor'), disabled: !hasConnections },
-        ],
-        Help: [
-            { label: 'Documentation', icon: <HelpCircle size={14}/>, onClick: () => onAction?.('open_docs') },
-            { label: 'Keyboard Shortcuts', onClick: () => onAction?.('open_shortcuts') },
-            { divider: true },
-            { label: 'About SqlForge', onClick: () => onAction?.('open_about') },
-        ]
-    }), [onAction, hasActiveTab, activeTabType, hasSelectedConnection, hasConnections]);
+            { label: 'Refresh Metadata', icon: <Zap size={14} className="text-amber-500"/>, onClick: () => onAction?.('refresh_metadata'), disabled: !hasSelectedConnection || !isConnected },
+            { label: 'Properties', icon: <Settings size={14}/>, onClick: () => onAction?.('connection_properties'), disabled: !hasSelectedConnection },
+        ];
+
+        return {
+            File: [
+                { label: 'New Connection...', icon: <Plus size={14}/>, shortcut: 'Ctrl+N', onClick: () => onAction?.('new_connection') },
+                { divider: true },
+                { label: 'New Query', icon: <Terminal size={14}/>, shortcut: 'Ctrl+Q', onClick: () => onAction?.('new_query'), disabled: !hasSelectedConnection },
+                { label: 'Save Query', icon: <Save size={14}/>, shortcut: 'Ctrl+S', onClick: () => onAction?.('save_query'), disabled: activeTabType !== 'query' },
+                { divider: true },
+                { label: 'Settings', icon: <Settings size={14}/>, shortcut: 'Ctrl+,', onClick: () => onAction?.('open_settings') },
+            ],
+            Edit: [
+                { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => onAction?.('undo'), disabled: activeTabType !== 'query' },
+                { label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => onAction?.('redo'), disabled: activeTabType !== 'query' },
+                { divider: true },
+                { label: 'Format SQL', icon: <Zap size={14}/>, shortcut: 'Ctrl+Shift+F', onClick: () => onAction?.('format_sql'), disabled: activeTabType !== 'query' },
+            ],
+            View: [
+                { label: 'Object Browser', shortcut: 'F8', onClick: () => onAction?.('open_browser'), disabled: !hasSelectedConnection },
+                { label: 'Toggle Sidebar', onClick: () => onAction?.('toggle_sidebar') },
+                { label: 'Query Editor', shortcut: 'F9', onClick: () => onAction?.('focus_editor'), disabled: activeTabType !== 'query' },
+                { label: 'Result Grid', shortcut: 'F10', onClick: () => onAction?.('focus_results'), disabled: !['query', 'table'].includes(activeTabType || '') },
+                { divider: true },
+                { label: 'Full Screen', shortcut: 'F11', onClick: () => onAction?.('toggle_fullscreen') },
+                { label: 'Toggle Dark Mode', onClick: () => onAction?.('toggle_theme') },
+            ],
+            Connection: connectionItems.filter((item): item is MenuItem => item !== false),
+            Tools: [
+                { label: 'Data Transfer...', icon: <Database size={14}/>, onClick: () => onAction?.('data_transfer'), disabled: !hasConnections },
+                { label: 'Data Synchronization...', onClick: () => onAction?.('data_sync'), disabled: !hasConnections },
+                { label: 'Structure Synchronization...', onClick: () => onAction?.('struct_sync'), disabled: !hasConnections },
+                { divider: true },
+                { label: 'Backup...', icon: <Save size={14}/>, onClick: () => onAction?.('backup'), disabled: !hasConnections },
+                { label: 'Restore...', onClick: () => onAction?.('restore'), disabled: !hasConnections },
+                { divider: true },
+                { label: 'AI Assistant', icon: <Sparkles size={14} className="text-purple-500"/>, onClick: () => onAction?.('ai_copilot'), disabled: activeTabType !== 'query' },
+                { label: 'Server Monitor', icon: <Cpu size={14}/>, onClick: () => onAction?.('monitor'), disabled: !hasConnections },
+            ],
+            Help: [
+                { label: 'Documentation', icon: <HelpCircle size={14}/>, onClick: () => onAction?.('open_docs') },
+                { label: 'Keyboard Shortcuts', onClick: () => onAction?.('open_shortcuts') },
+                { divider: true },
+                { label: 'About SqlForge', onClick: () => onAction?.('open_about') },
+            ]
+        };
+    }, [onAction, hasActiveTab, activeTabType, hasSelectedConnection, hasConnections, isConnected]);
 
     useEffect(() => {
         const handleClickOutside = () => setOpenMenu(null);

@@ -25,27 +25,30 @@ interface Props {
   onNewConnection: () => void;
   onEditConnection: (conn: ConnectionConfig) => void;
   onDeleteConnection: (connId: string) => void;
+  onConnect?: (connId: string) => void;
+  onDisconnect?: (connId: string) => void;
   onExportTable: (connId: string, tableName: string) => void;
   onImportTable: (connId: string, tableName: string) => void;
   onDropObject: (connId: string, name: string, type: string) => void;
   onOpenSettings: () => void;
-  onSelectConnection?: (connId: string) => void;
-  onRefresh?: () => void;
-  connections: ConnectionConfig[];
-  loading?: boolean;
-  selectedConnectionId?: string | null;
-}
-
-const DB_ICONS: Record<string, { icon: LucideIcon, color: string }> = {
-    sqlite: { icon: Database, color: 'text-blue-500' },
-    postgresql: { icon: Database, color: 'text-indigo-500' },
-    mysql: { icon: Database, color: 'text-orange-500' },
-    mssql: { icon: Database, color: 'text-red-500' },
-    oracle: { icon: Database, color: 'text-rose-600' },
-    redis: { icon: Layers, color: 'text-rose-500' },
-    mongodb: { icon: Box, color: 'text-emerald-500' },
-};
-
+    onSelectConnection?: (connId: string) => void;
+    onRefresh?: () => void;
+    connections: ConnectionConfig[];
+    healthStatuses?: Record<string, 'online' | 'offline'>;
+    loading?: boolean;
+    selectedConnectionId?: string | null;
+  }
+  
+  const DB_ICONS: Record<string, { icon: LucideIcon, color: string }> = {
+      sqlite: { icon: Database, color: 'text-blue-500' },
+      postgresql: { icon: Database, color: 'text-indigo-500' },
+      mysql: { icon: Database, color: 'text-orange-500' },
+      mssql: { icon: Database, color: 'text-red-500' },
+      oracle: { icon: Database, color: 'text-rose-600' },
+      redis: { icon: Layers, color: 'text-rose-500' },
+      mongodb: { icon: Box, color: 'text-emerald-500' },
+  };
+  
 export const Sidebar: React.FC<Props> = ({ 
     onSelectTable, 
     onOpenQuery, 
@@ -57,6 +60,8 @@ export const Sidebar: React.FC<Props> = ({
     onNewConnection, 
     onEditConnection,
     onDeleteConnection,
+    onConnect,
+    onDisconnect,
     onExportTable,
     onImportTable,
     onDropObject,
@@ -64,54 +69,66 @@ export const Sidebar: React.FC<Props> = ({
     onSelectConnection, 
     onRefresh, 
     connections, 
+    healthStatuses = {},
     loading, 
     selectedConnectionId 
 }) => {
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('connections');
-  const [history, setHistory] = useState<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>([]);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [tables, setTables] = useState<Record<string, {name: string, type: string}[]>>({});
-  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
-  const [healthStatuses, setHealthStatuses] = useState<Record<string, 'online' | 'offline'>>({});
-  const [connectionErrors, setConnectionErrors] = useState<Record<string, string>>({});
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const loadHistory = async () => {
-    // Keep local loading for history
-    try {
-        const data = await api.getHistory();
-        setHistory(data);
-    } catch (e) {
-        console.error(e);
-    }
-  };
-
-  const checkHealth = async () => {
+    const [activeTab, setActiveTab] = useState('connections');
+    const [history, setHistory] = useState<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>([]);
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+    const [tables, setTables] = useState<Record<string, {name: string, type: string}[]>>({});
+    const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+    const [connectionErrors, setConnectionErrors] = useState<Record<string, string>>({});
+    const [searchTerm, setSearchTerm] = useState('');
+  
+    const loadHistory = async () => {
+      // Keep local loading for history
       try {
-          const health = await api.getConnectionsHealth();
-          setHealthStatuses(health);
+          const data = await api.getHistory();
+          setHistory(data);
       } catch (e) {
-          console.error("Health check failed", e);
+          console.error(e);
       }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'history') loadHistory();
-    if (activeTab === 'connections') {
-        checkHealth();
-        const interval = setInterval(checkHealth, 30000); // Check every 30s
-        return () => clearInterval(interval);
-    }
-  }, [activeTab]);
-
-  const toggleConnection = async (conn: ConnectionConfig) => {
-    if (!conn.id) return;
-    onSelectConnection?.(conn.id);
-    const isExpanded = expanded[conn.id];
-    setExpanded(prev => ({ ...prev, [conn.id!]: !isExpanded }));
-
-    // If we are expanding and don't have tables (or had an error), try to fetch
+    };
+  
+      useEffect(() => {
+        if (activeTab === 'history') loadHistory();
+      }, [activeTab]);
+    
+      useEffect(() => {
+        // Clear tables and collapse for offline connections
+        Object.entries(healthStatuses).forEach(([id, status]) => {
+          if (status === 'offline') {
+            if (tables[id]) {
+              setTables(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+              });
+            }
+            if (expanded[id]) {
+              setExpanded(prev => ({ ...prev, [id]: false }));
+            }
+          }
+        });
+      }, [healthStatuses]);
+    
+      const toggleConnection = async (conn: ConnectionConfig) => {
+        if (!conn.id) return;
+        onSelectConnection?.(conn.id);
+        
+        const isExpanded = expanded[conn.id];
+        const isConnected = healthStatuses[conn.id] === 'online';
+    
+        // If trying to expand an offline connection, trigger connect instead
+        if (!isExpanded && !isConnected) {
+          onConnect?.(conn.id);
+          return;
+        }
+    
+        setExpanded(prev => ({ ...prev, [conn.id!]: !isExpanded }));
+        // If we are expanding and don't have tables (or had an error), try to fetch
     if (!isExpanded && (!tables[conn.id] || connectionErrors[conn.id])) {
         setLoadingIds(prev => new Set(prev).add(conn.id!));
         try {
@@ -194,6 +211,7 @@ export const Sidebar: React.FC<Props> = ({
                         const Icon = IconInfo.icon;
                         const isExpanded = expanded[conn.id!];
                         const isSelected = selectedConnectionId === conn.id;
+                        const isConnected = healthStatuses[conn.id!] === 'online';
 
                         return (
                             <div key={conn.id} className="group/conn px-1">
@@ -248,6 +266,22 @@ export const Sidebar: React.FC<Props> = ({
                                         </div>
                                     </ContextMenuTrigger>
                                     <ContextMenuContent className="w-48">
+                                        {!isConnected && (
+                                            <ContextMenuItem onClick={() => onConnect?.(conn.id!)} className="gap-2">
+                                                <Zap size={14} className="text-emerald-500" /> Connect
+                                            </ContextMenuItem>
+                                        )}
+                                        {isConnected && (
+                                            <>
+                                                <ContextMenuItem onClick={() => onDisconnect?.(conn.id!)} className="gap-2">
+                                                    <X size={14} className="text-destructive" /> Disconnect
+                                                </ContextMenuItem>
+                                                <ContextMenuItem onClick={() => onConnect?.(conn.id!)} className="gap-2">
+                                                    <RefreshCw size={14} className="text-sky-500" /> Reconnect
+                                                </ContextMenuItem>
+                                            </>
+                                        )}
+                                        <ContextMenuSeparator />
                                         <ContextMenuItem onClick={() => onOpenQuery(conn.id!)} className="gap-2">
                                             <Terminal size={14} /> New Query Tab
                                         </ContextMenuItem>

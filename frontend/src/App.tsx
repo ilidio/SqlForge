@@ -58,6 +58,7 @@ function App() {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [helpTab, setHelpTab] = useState('shortcuts');
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [healthStatuses, setHealthStatuses] = useState<Record<string, 'online' | 'offline'>>({});
   const [editingConnection, setEditingConnection] = useState<ConnectionConfig | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -66,13 +67,28 @@ function App() {
   const [isConfirmDropOpen, setIsConfirmDropOpen] = useState(false);
   const [objectToDrop, setObjectToDrop] = useState<{connId: string, name: string, type: string} | null>(null);
 
+  const checkHealth = async () => {
+    try {
+        const health = await api.getConnectionsHealth();
+        setHealthStatuses(health);
+    } catch (e) {
+        console.error("Health check failed", e);
+    }
+  };
+
   useEffect(() => {
     setLoadingConnections(true);
     api.getConnections().then(conns => {
         setConnections(conns);
         setLoadingConnections(false);
     });
+    checkHealth();
   }, [refreshTrigger]);
+
+  useEffect(() => {
+    const interval = setInterval(checkHealth, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -288,6 +304,7 @@ function App() {
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const effectiveConnectionId = activeTab?.connectionId || selectedConnectionId;
+  const isConnected = effectiveConnectionId ? healthStatuses[effectiveConnectionId] === 'online' : false;
 
   const handleDeleteConfirm = async () => {
       if (!connectionToDelete) return;
@@ -340,6 +357,7 @@ function App() {
         activeTabType={activeTab?.type}
         hasSelectedConnection={!!effectiveConnectionId}
         hasConnections={connections.length > 0}
+        isConnected={isConnected}
         onAction={async (action) => {
           if (action === 'new_query' && effectiveConnectionId) {
               handleOpenQuery(effectiveConnectionId);
@@ -401,8 +419,47 @@ function App() {
           if (action === 'delete_all_connections') {
               setIsConfirmDeleteAllOpen(true);
           }
-          if (['connect', 'reconnect', 'refresh_metadata'].includes(action) && (selectedConnectionId || activeTab?.connectionId)) {
+          if (['refresh_metadata'].includes(action) && (selectedConnectionId || activeTab?.connectionId)) {
               setRefreshTrigger(prev => prev + 1);
+          }
+
+          if (action === 'connect' && effectiveConnectionId) {
+            const conn = connections.find(c => c.id === effectiveConnectionId);
+            if (conn) {
+                try {
+                    const res = await api.testConnection(conn);
+                    if (res.success) {
+                        toast.success(`Connected to ${conn.name}`);
+                        setRefreshTrigger(prev => prev + 1);
+                    } else {
+                        toast.error(`Failed to connect to ${conn.name}: ${res.message}`);
+                    }
+                } catch (e: any) {
+                    toast.error(`Error connecting: ${e.message}`);
+                }
+            }
+          }
+
+          if (action === 'reconnect' && effectiveConnectionId) {
+            const conn = connections.find(c => c.id === effectiveConnectionId);
+            if (conn) {
+                try {
+                    const res = await api.testConnection(conn);
+                    if (res.success) {
+                        toast.success(`Reconnected to ${conn.name}`);
+                        setRefreshTrigger(prev => prev + 1);
+                    } else {
+                        toast.error(`Failed to reconnect to ${conn.name}: ${res.message}`);
+                    }
+                } catch (e: any) {
+                    toast.error(`Error reconnecting: ${e.message}`);
+                }
+            }
+          }
+
+          if (action === 'disconnect' && effectiveConnectionId) {
+            setHealthStatuses(prev => ({ ...prev, [effectiveConnectionId]: 'offline' }));
+            toast.info("Disconnected");
           }
 
           if (action === 'toggle_sidebar') setIsSidebarVisible(prev => !prev);
@@ -450,6 +507,7 @@ function App() {
           <Sidebar 
             key={refreshTrigger}
             connections={connections}
+            healthStatuses={healthStatuses}
             loading={loadingConnections}
             selectedConnectionId={selectedConnectionId}
             onSelectTable={handleSelectTable} 
@@ -462,6 +520,26 @@ function App() {
             onNewConnection={() => setIsModalOpen(true)}
             onEditConnection={(conn) => { setEditingConnection(conn); setIsModalOpen(true); }}
             onDeleteConnection={(id) => { setConnectionToDelete(id); setIsConfirmDeleteOpen(true); }}
+            onConnect={async (id) => {
+                const conn = connections.find(c => c.id === id);
+                if (conn) {
+                    try {
+                        const res = await api.testConnection(conn);
+                        if (res.success) {
+                            toast.success(`Connected to ${conn.name}`);
+                            setRefreshTrigger(prev => prev + 1);
+                        } else {
+                            toast.error(`Failed to connect to ${conn.name}: ${res.message}`);
+                        }
+                    } catch (e: any) {
+                        toast.error(`Error connecting: ${e.message}`);
+                    }
+                }
+            }}
+            onDisconnect={(_id) => {
+                toast.info("Disconnected");
+                setRefreshTrigger(prev => prev + 1);
+            }}
             onExportTable={(connId, tableName) => { setExportTarget({connId, tableName}); setIsExportOpen(true); }}
             onImportTable={(connId, tableName) => { setImportTarget({connId, tableName}); setIsImportOpen(true); }}
             onDropObject={(connId, name, type) => { setObjectToDrop({connId, name, type}); setIsConfirmDropOpen(true); }}
