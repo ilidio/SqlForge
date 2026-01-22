@@ -1029,7 +1029,7 @@ def alter_table(config: ConnectionConfig, request: AlterTableRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def get_execution_plan(config: ConnectionConfig, query_str: str):
+def get_execution_plan(config: ConnectionConfig, query_str: str, analyze: bool = False):
     """
     Runs EXPLAIN (JSON) for the given query and returns the raw plan data.
     """
@@ -1038,15 +1038,26 @@ def get_execution_plan(config: ConnectionConfig, query_str: str):
     try:
         with engine.connect() as conn:
             if config.type == 'postgresql':
-                # Postgres: EXPLAIN (FORMAT JSON)
-                stmt = text(f"EXPLAIN (FORMAT JSON) {query_str}")
+                # Postgres: EXPLAIN (FORMAT JSON) or EXPLAIN (ANALYZE, FORMAT JSON)
+                prefix = "EXPLAIN (ANALYZE, FORMAT JSON)" if analyze else "EXPLAIN (FORMAT JSON)"
+                stmt = text(f"{prefix} {query_str}")
                 result = conn.execute(stmt)
                 # Postgres returns a list of rows, the first row contains the JSON
                 plan_json = result.scalar() 
                 return {"plan": plan_json, "dialect": "postgresql", "error": None}
                 
             elif config.type == 'mysql':
-                # MySQL: EXPLAIN FORMAT=JSON ...
+                # MySQL: EXPLAIN FORMAT=JSON ... (ANALYZE introduced in 8.0.18, standard EXPLAIN works too)
+                prefix = "EXPLAIN ANALYZE" if analyze else "EXPLAIN FORMAT=JSON"
+                # Note: EXPLAIN ANALYZE in MySQL 8.0+ returns TREE format, not JSON.
+                # Standard EXPLAIN FORMAT=JSON returns JSON with cost estimates.
+                # If analyze is requested for MySQL, we might get a text-based tree, which is hard to parse for now.
+                # We will stick to FORMAT=JSON for visualization compatibility unless we implement a Tree parser.
+                # Let's keep it simple: Use JSON format for visualization.
+                if analyze:
+                     # Fallback for now or warning? Let's just use standard JSON for visualization safety
+                     pass
+                     
                 stmt = text(f"EXPLAIN FORMAT=JSON {query_str}")
                 result = conn.execute(stmt)
                 # MySQL returns a single string in the 'EXPLAIN' column

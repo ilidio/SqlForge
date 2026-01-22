@@ -5,6 +5,8 @@ import { ResultsTable, type ResultsTableHandle } from './ResultsTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { IndexAdvisor } from './IndexAdvisor';
 import { VisualExplain } from './VisualExplain';
@@ -33,6 +35,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   const resultsTableRef = useRef<ResultsTableHandle>(null);
   const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
   const [loading, setLoading] = useState(false);
+  const [withAnalyze, setWithAnalyze] = useState(false);
   
   // AI State
   const [showAi, setShowAi] = useState(false);
@@ -80,8 +83,6 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
       }));
 
       // Register completion provider
-      // Note: In a real app, you'd want to dispose of this when component unmounts
-      // or key it by connectionId to avoid duplicates.
       monaco.languages.registerCompletionItemProvider('sql', {
         provideCompletionItems: (model, position) => {
           const word = model.getWordUntilPosition(position);
@@ -126,10 +127,9 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     setLoading(true);
     setViewMode('explain');
     try {
-      const res = await api.explainQuery(connectionId, sql);
+      const res = await api.explainQuery(connectionId, sql, withAnalyze);
       if (res.error) {
           toast.error("Explain failed: " + res.error);
-          // Fallback to text result if needed? For now just error toast.
       } else {
           setPlanData(res.plan);
           setPlanDialect(res.dialect);
@@ -226,7 +226,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
             if (val === null || val === undefined) return '';
             const strVal = String(val);
             if (strVal.includes(',') || strVal.includes('"') || strVal.includes('\n')) {
-                return `"${strVal.replace(/"/g, '""')}"`;
+                return `"${strVal.replace(new RegExp('"', 'g'), '""')}"`;
             }
             return strVal;
         }).join(',')
@@ -258,7 +258,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     const tableName = 'exported_data';
     const sqlInserts = result.rows.map(row => {
         const cols = Object.keys(row).join(', ');
-        const vals = Object.values(row).map(v => typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v === null ? 'NULL' : v).join(', ');
+        const vals = Object.values(row).map(v => typeof v === 'string' ? `'${v.replace(new RegExp("'", 'g'), "''")}'` : v === null ? 'NULL' : v).join(', ');
         return `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`;
     }).join('\n');
     
@@ -372,7 +372,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
               </Button>
             )}
           </div>
-          <div className="flex gap-2 mr-1">
+          <div className="flex gap-2 mr-1 items-center">
              {result && result.rows && result.rows.length > 0 && (
                  <Popover>
                     <PopoverTrigger asChild>
@@ -397,6 +397,9 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                     </PopoverContent>
                  </Popover>
              )}
+             
+             <div className="h-4 w-px bg-border mx-1" />
+
              <Button 
                 size="sm"
                 variant="ghost"
@@ -417,22 +420,37 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                 <BarChart2 size={13} />
                 Stress Test
              </Button>
-             <Button 
-                size="sm"
-                variant="outline"
-                onClick={runExplain}
-                loading={loading && viewMode === 'explain'}
-                className="h-8 text-xs gap-1.5 px-3"
-                title="Visual Explain Plan"
-             >
-                <Activity size={13} />
-                Explain
-             </Button>
+             
+             <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 border border-border h-8">
+                 <div className="flex items-center gap-1.5">
+                    <Checkbox 
+                        id="analyze-mode" 
+                        checked={withAnalyze} 
+                        onCheckedChange={(c) => setWithAnalyze(!!c)} 
+                        className="w-3.5 h-3.5"
+                    />
+                    <Label htmlFor="analyze-mode" className="text-[10px] font-medium cursor-pointer text-muted-foreground hover:text-foreground">
+                        Exec Stats
+                    </Label>
+                 </div>
+                 <Button 
+                    size="sm"
+                    variant="ghost"
+                    onClick={runExplain}
+                    loading={loading && viewMode === 'explain'}
+                    className="h-6 text-xs gap-1.5 px-2 hover:bg-background shadow-none border-l rounded-l-none ml-1"
+                    title="Visual Explain Plan"
+                 >
+                    <Activity size={13} />
+                    Explain
+                 </Button>
+             </div>
+
              <Button 
                 size="sm"
                 onClick={runQuery}
                 loading={loading && viewMode === 'grid'}
-                className="h-8 text-xs font-bold gap-1.5 px-4 shadow-sm"
+                className="h-8 text-xs font-bold gap-1.5 px-4 shadow-sm ml-2"
              >
                 <Play size={13} />
                 Execute

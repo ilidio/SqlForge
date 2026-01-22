@@ -24,6 +24,7 @@ class ConnectionConfig(BaseModel):
 class QueryRequest(BaseModel):
     connection_id: str
     sql: str
+    analyze: bool = False
 
 class TableInfo(BaseModel):
     name: str

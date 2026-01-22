@@ -174,7 +174,7 @@ def explain_query(query: QueryRequest):
     if not config:
         raise HTTPException(status_code=404, detail="Connection not found")
     
-    result = database.get_execution_plan(config, query.sql)
+    result = database.get_execution_plan(config, query.sql, analyze=query.analyze)
     return result
 
 @app.post("/query/benchmark")
