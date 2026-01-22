@@ -22,7 +22,16 @@ def get_lock_tree(config: ConnectionConfig) -> dict:
                     a.state, 
                     a.wait_event, 
                     now() - a.query_start as duration,
-                    pg_blocking_pids(a.pid) as blocking_pids
+                    pg_blocking_pids(a.pid) as blocking_pids,
+                    (
+                        SELECT string_agg(c.relname, ', ')
+                        FROM pg_locks l
+                        JOIN pg_class c ON l.relation = c.oid
+                        WHERE l.pid = a.pid 
+                        AND l.granted = true 
+                        AND l.locktype = 'relation'
+                        AND c.relkind = 'r'
+                    ) as locked_tables
                 FROM pg_stat_activity a
                 WHERE a.pid != pg_backend_pid()
                 """
@@ -42,6 +51,7 @@ def get_lock_tree(config: ConnectionConfig) -> dict:
                             "state": row['state'],
                             "duration": str(row['duration']),
                             "wait_event": row['wait_event'],
+                            "locked_tables": row['locked_tables'],
                             "is_blocked": False,
                             "is_blocking": False
                         }

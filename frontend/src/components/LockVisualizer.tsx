@@ -23,7 +23,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 
 // --- Custom Node ---
 const LockNode = ({ data }: NodeProps) => {
-  const { label, user, query, state, duration, is_blocking, onKill } = data;
+  const { label, user, query, state, duration, locked_tables, is_blocking, onKill } = data;
   
   return (
     <ContextMenu>
@@ -48,6 +48,12 @@ const LockNode = ({ data }: NodeProps) => {
                 {duration && (
                     <div className="flex items-center gap-1 text-amber-600 font-mono">
                         <Clock size={12} /> {duration}
+                    </div>
+                )}
+                {locked_tables && (
+                    <div className="flex flex-col gap-1 mt-1">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Locked:</span>
+                        <span className="text-[10px] text-red-600 font-semibold">{locked_tables}</span>
                     </div>
                 )}
                 {query && (
