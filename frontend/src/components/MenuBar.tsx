@@ -31,7 +31,7 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
             isConnected 
                 ? { label: 'Disconnect', icon: <X size={14} className="text-destructive"/>, onClick: () => onAction?.('disconnect'), disabled: !hasSelectedConnection }
                 : { label: 'Connect', icon: <Zap size={14} className="text-emerald-500"/>, onClick: () => onAction?.('connect'), disabled: !hasSelectedConnection },
-            isConnected && { label: 'Reconnect', icon: <RefreshCw size={14} className="text-sky-500"/>, onClick: () => onAction?.('reconnect'), disabled: !hasSelectedConnection },
+            isConnected ? { label: 'Reconnect', icon: <RefreshCw size={14} className="text-sky-500"/>, onClick: () => onAction?.('reconnect'), disabled: !hasSelectedConnection } : false,
             { label: 'Test Connection', onClick: () => onAction?.('test_connection'), disabled: !hasSelectedConnection },
             { divider: true },
             { label: 'Edit Connection...', icon: <Edit2 size={14}/>, onClick: () => onAction?.('edit_connection'), disabled: !hasSelectedConnection },

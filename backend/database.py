@@ -83,7 +83,7 @@ def get_connection_url(config: ConnectionConfig, local_port: int = None) -> str:
         return f"oracle+oracledb://{config.username}:{config.password}@{host}:{port}/?service_name={config.database}"
     return ""
 
-def get_engine(config: ConnectionConfig) -> Engine:
+def get_engine(config: ConnectionConfig, **kwargs) -> Engine:
     local_port = None
     
     # Handle SSH Tunnel
@@ -102,7 +102,7 @@ def get_engine(config: ConnectionConfig) -> Engine:
     elif config.type == 'mysql':
         connect_args = {"connect_timeout": 5}
     
-    return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+    return create_engine(url, connect_args=connect_args, pool_pre_ping=True, **kwargs)
 
 def get_schema_context(config: ConnectionConfig) -> str:
     if config.type == 'redis':

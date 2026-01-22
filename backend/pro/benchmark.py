@@ -7,7 +7,15 @@ from models import ConnectionConfig
 from typing import List, Dict, Any
 
 def run_benchmark(config: ConnectionConfig, sql: str, concurrency: int = 5, duration: int = 10) -> Dict[str, Any]:
-    engine = get_engine(config)
+    # Optimize pool size for concurrency
+    engine_args = {}
+    if config.type != 'sqlite':
+        engine_args = {
+            "pool_size": concurrency,
+            "max_overflow": 0
+        }
+    
+    engine = get_engine(config, **engine_args)
     latencies = []
     errors = 0
     total_requests = 0
