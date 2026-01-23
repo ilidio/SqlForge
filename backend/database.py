@@ -264,8 +264,37 @@ def get_tables(config: ConnectionConfig) -> list[TableInfo]:
                 for row in res:
                     items.append(TableInfo(name=row[0], type="trigger"))
                 
-                # Postgres Functions
-                res = conn.execute(text("SELECT proname FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'public'"))
+                # Postgres Functions & Procedures
+                # prokind: 'f' for function, 'p' for procedure
+                res = conn.execute(text("""
+                    SELECT proname, prokind 
+                    FROM pg_proc p 
+                    JOIN pg_namespace n ON p.pronamespace = n.oid 
+                    WHERE n.nspname = 'public'
+                """))
+                for row in res:
+                    item_type = "procedure" if row[1] == 'p' else "function"
+                    items.append(TableInfo(name=row[0], type=item_type))
+
+            elif config.type == 'mysql':
+                # MySQL Procedures
+                res = conn.execute(text("SHOW PROCEDURE STATUS WHERE Db = :db"), {"db": config.database})
+                for row in res:
+                    items.append(TableInfo(name=row[1], type="procedure"))
+                
+                # MySQL Functions
+                res = conn.execute(text("SHOW FUNCTION STATUS WHERE Db = :db"), {"db": config.database})
+                for row in res:
+                    items.append(TableInfo(name=row[1], type="function"))
+
+            elif config.type == 'mssql':
+                # MSSQL Procedures
+                res = conn.execute(text("SELECT name FROM sys.objects WHERE type = 'P'"))
+                for row in res:
+                    items.append(TableInfo(name=row[0], type="procedure"))
+                
+                # MSSQL Functions
+                res = conn.execute(text("SELECT name FROM sys.objects WHERE type IN ('FN', 'IF', 'TF')"))
                 for row in res:
                     items.append(TableInfo(name=row[0], type="function"))
 

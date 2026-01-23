@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, type ConnectionConfig } from '../api';
-import { Database, Table, Plus, RefreshCw, History, Clock, ChevronRight, ChevronDown, Layers, FileText, Key, Box, Search, Settings, Zap, Cpu, Terminal, Wand2, Activity, Sparkles } from 'lucide-react';
+import { Database, Table, Plus, RefreshCw, History, Clock, ChevronRight, ChevronDown, Layers, FileText, Key, Box, Search, Settings, Zap, Cpu, Terminal, Wand2, Activity, Sparkles, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -386,17 +386,25 @@ export const Sidebar: React.FC<Props> = ({
                                                                             </div>
                                                                         </ContextMenuTrigger>
                                                                         <ContextMenuContent className="w-56">
-                                                                            <ContextMenuItem onClick={() => onSelectTable(conn.id!, t.name)} className="gap-2 font-bold">
-                                                                                <DbIcon size={14} /> View Data
-                                                                            </ContextMenuItem>
+                                                                            {(t.type === 'procedure' || t.type === 'function') ? (
+                                                                                <ContextMenuItem onClick={() => onOpenQuery(conn.id!, t.type === 'procedure' ? `CALL ${t.name}();` : `SELECT ${t.name}();`)} className="gap-2 font-bold">
+                                                                                    <Play size={14} className="text-emerald-500" /> Script to Editor
+                                                                                </ContextMenuItem>
+                                                                            ) : (
+                                                                                <ContextMenuItem onClick={() => onSelectTable(conn.id!, t.name)} className="gap-2 font-bold">
+                                                                                    <DbIcon size={14} /> View Data
+                                                                                </ContextMenuItem>
+                                                                            )}
                                                                             {t.type === 'table' && (
                                                                                 <ContextMenuItem onClick={() => onHydrateTable(conn.id!, t.name)} className="gap-2 text-indigo-600 focus:text-indigo-600 font-medium">
                                                                                     <Sparkles size={14} /> Hydrate with AI Data...
                                                                                 </ContextMenuItem>
                                                                             )}
-                                                                            <ContextMenuItem onClick={() => onOpenSchema(conn.id!, t.name)} className="gap-2">
-                                                                                <Layout size={14} /> Design Table
-                                                                            </ContextMenuItem>
+                                                                            {(t.type !== 'procedure' && t.type !== 'function' && t.type !== 'trigger') && (
+                                                                                <ContextMenuItem onClick={() => onOpenSchema(conn.id!, t.name)} className="gap-2">
+                                                                                    <Layout size={14} /> Design Table
+                                                                                </ContextMenuItem>
+                                                                            )}
                                                                             <ContextMenuItem onClick={() => {
                                                                                 navigator.clipboard.writeText(t.name);
                                                                                 toast.success("Table name copied");
@@ -409,10 +417,16 @@ export const Sidebar: React.FC<Props> = ({
                                                                                     <FileText size={14} /> Generate SQL
                                                                                 </ContextMenuSubTrigger>
                                                                                 <ContextMenuSubContent className="w-48">
-                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `SELECT * FROM ${t.name} LIMIT 100;`)}>SELECT Statement</ContextMenuItem>
-                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `INSERT INTO ${t.name} (...) VALUES (...);`)}>INSERT Statement</ContextMenuItem>
-                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `UPDATE ${t.name} SET ... WHERE ...;`)}>UPDATE Statement</ContextMenuItem>
-                                                                                    <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `DELETE FROM ${t.name} WHERE ...;`)}>DELETE Statement</ContextMenuItem>
+                                                                                    {(t.type === 'procedure' || t.type === 'function') ? (
+                                                                                        <ContextMenuItem onClick={() => onOpenQuery(conn.id!, t.type === 'procedure' ? `CALL ${t.name}();` : `SELECT ${t.name}();`)}>EXECUTE Statement</ContextMenuItem>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `SELECT * FROM ${t.name} LIMIT 100;`)}>SELECT Statement</ContextMenuItem>
+                                                                                            <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `INSERT INTO ${t.name} (...) VALUES (...);`)}>INSERT Statement</ContextMenuItem>
+                                                                                            <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `UPDATE ${t.name} SET ... WHERE ...;`)}>UPDATE Statement</ContextMenuItem>
+                                                                                            <ContextMenuItem onClick={() => onOpenQuery(conn.id!, `DELETE FROM ${t.name} WHERE ...;`)}>DELETE Statement</ContextMenuItem>
+                                                                                        </>
+                                                                                    )}
                                                                                 </ContextMenuSubContent>
                                                                             </ContextMenuSub>
                                                                             <ContextMenuSeparator />
