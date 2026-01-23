@@ -21,7 +21,6 @@ from monitor import locks
 from monitor.health import HealthAuditor
 from monitor.manager import MonitorManager
 from pro import benchmark
-from pro.automation import automation_engine
 
 app = FastAPI(title="SqlForge API")
 
@@ -255,29 +254,6 @@ def run_batch_queries(request: Dict[str, Any]):
 @app.get("/history", response_model=List[Dict[str, Any]])
 def get_history_endpoint():
     return internal_db.get_history()
-
-# --- AUTOMATION ---
-
-@app.get("/automation/tasks")
-def get_tasks():
-    return automation_engine.get_tasks()
-
-@app.post("/automation/tasks")
-def save_task(task: Dict[str, Any]):
-    return automation_engine.save_task(task)
-
-@app.delete("/automation/tasks/{task_id}")
-def delete_task(task_id: str):
-    automation_engine.delete_task(task_id)
-    return {"status": "deleted"}
-
-@app.post("/automation/tasks/{task_id}/run")
-def run_task(task_id: str):
-    return automation_engine.run_task(task_id)
-
-@app.get("/automation/history")
-def get_task_history(task_id: Optional[str] = None):
-    return automation_engine.get_history(task_id)
 
 @app.get("/ai/models")
 def list_ai_models(api_key: str):

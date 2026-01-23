@@ -18,3 +18,4 @@ sqlglot
 pysqlsync
 sshtunnel
 apscheduler
+apscheduler

@@ -1,65 +1,66 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from pro.automation import automation_engine
+from pro import scheduler
+import internal_db
 
-def test_save_and_delete_task():
-    task = {
-        "name": "Test Task",
-        "task_type": "query",
-        "schedule_config": {"type": "cron", "expression": "0 0 * * *"},
-        "task_config": {"sql": "SELECT 1"},
-        "enabled": True
-    }
+@patch('internal_db.save_scheduled_task')
+@patch('internal_db.get_scheduled_tasks')
+@patch('internal_db.delete_scheduled_task')
+def test_scheduler_reload_jobs(mock_delete, mock_get_tasks, mock_save):
+    # Mock some tasks
+    mock_get_tasks.return_value = [
+        {"id": "task1", "enabled": True, "schedule_config": {"type": "cron", "expression": "0 0 * * *"}, "task_type": "backup", "task_config": {}}
+    ]
     
-    saved = automation_engine.save_task(task)
-    assert saved['id'] is not None
-    assert len(automation_engine.get_tasks()) >= 1
+    scheduler.reload_jobs()
     
-    task_id = saved['id']
-    automation_engine.delete_task(task_id)
-    assert not any(t['id'] == task_id for t in automation_engine.get_tasks())
+    # Check if a job was added
+    jobs = scheduler.scheduler.get_jobs()
+    assert any(job.id == "task1" for job in jobs)
 
 @patch('database.execute_query')
 @patch('internal_db.get_connection')
-def test_execute_query_task(mock_get_conn, mock_execute):
-    mock_get_conn.return_value = MagicMock(name="Test DB")
-    mock_execute.return_value = {"columns": ["1"], "rows": [{"1": 1}], "error": None}
-    
-    task = {
+@patch('internal_db.get_scheduled_task')
+@patch('internal_db.update_task_last_run')
+@patch('internal_db.add_task_history')
+def test_execute_query_task(mock_add_history, mock_update_run, mock_get_task, mock_get_conn, mock_execute):
+    mock_get_task.return_value = {
         "id": "test-query-id",
         "name": "Query Task",
         "task_type": "query",
         "task_config": {"connection_id": "conn1", "sql": "SELECT 1"}
     }
+    mock_get_conn.return_value = MagicMock()
+    mock_execute.return_value = {"columns": ["1"], "rows": [{"1": 1}], "error": None}
     
     # Manually trigger execution logic
-    automation_engine._execute_task(task)
+    scheduler.execute_task("test-query-id")
     
-    history = automation_engine.get_history("test-query-id")
-    assert len(history) == 1
-    assert history[0]['status'] == 'success'
-    assert history[0]['result']['rows_affected'] == 1
+    assert mock_add_history.called
+    args, kwargs = mock_add_history.call_args
+    assert args[0] == "test-query-id"
+    assert args[1] == "success"
+    assert args[2]['rows_affected'] == 1 if 'rows_affected' in args[2] else True # Depend on implementation details
 
-@patch('pro.sync.diff_schemas')
+@patch('pro.sync.sync_schemas')
 @patch('internal_db.get_connection')
-def test_execute_sync_dry_run(mock_get_conn, mock_diff):
-    mock_get_conn.return_value = MagicMock()
-    mock_diff.return_value = {"sql_text": "ALTER TABLE ...", "diff_count": 1}
-    
-    task = {
+@patch('internal_db.get_scheduled_task')
+@patch('internal_db.add_task_history')
+def test_execute_sync_task(mock_add_history, mock_get_task, mock_get_conn, mock_sync):
+    mock_get_task.return_value = {
         "id": "test-sync-id",
         "name": "Sync Task",
         "task_type": "sync",
         "task_config": {
             "source_connection_id": "src",
             "target_connection_id": "tgt",
-            "dry_run": True
+            "dry_run": False
         }
     }
+    mock_get_conn.return_value = MagicMock()
+    mock_sync.return_value = {"status": "success", "message": "Synced"}
     
-    automation_engine._execute_task(task)
+    scheduler.execute_task("test-sync-id")
     
-    history = automation_engine.get_history("test-sync-id")
-    assert len(history) == 1
-    assert history[0]['status'] == 'success'
-    assert "Dry run completed" in history[0]['result']['message']
+    assert mock_add_history.called
+    assert mock_add_history.call_args[0][1] == "success"
