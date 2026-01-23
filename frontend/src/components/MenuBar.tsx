@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { 
-  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X, Trash2, RefreshCw 
+  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X, Trash2, RefreshCw, Clock 
 } from 'lucide-react';
 interface MenuItem {
     label?: string;
@@ -73,12 +73,15 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
                 { label: 'Data Synchronization...', onClick: () => onAction?.('data_sync'), disabled: !hasConnections },
                 { label: 'Structure Synchronization...', onClick: () => onAction?.('struct_sync'), disabled: !hasConnections },
                 { divider: true },
+                { label: 'Automation & Scheduling...', icon: <Clock size={14}/>, onClick: () => onAction?.('automation') },
+                { divider: true },
                 { label: 'Backup...', icon: <Save size={14}/>, onClick: () => onAction?.('backup'), disabled: !hasConnections },
                 { label: 'Restore...', onClick: () => onAction?.('restore'), disabled: !hasConnections },
                 { divider: true },
                 { label: 'AI Assistant', icon: <Sparkles size={14} className="text-purple-500"/>, onClick: () => onAction?.('ai_copilot'), disabled: activeTabType !== 'query' },
                 { label: 'Server Monitor', icon: <Cpu size={14}/>, onClick: () => onAction?.('monitor'), disabled: !hasConnections },
             ],
+
             Help: [
                 { label: 'Documentation', icon: <HelpCircle size={14}/>, onClick: () => onAction?.('open_docs') },
                 { label: 'Keyboard Shortcuts', onClick: () => onAction?.('open_shortcuts') },

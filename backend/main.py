@@ -16,10 +16,12 @@ from pro import index_advisor
 from pro import what_if
 from pro import refactorer
 from pro import generator
+from pro import scheduler
 from monitor import locks
 from monitor.health import HealthAuditor
 from monitor.manager import MonitorManager
 from pro import benchmark
+from pro.automation import automation_engine
 
 app = FastAPI(title="SqlForge API")
 
@@ -34,10 +36,52 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event():
     internal_db.init_db()
+    scheduler.start_scheduler()
 
 @app.get("/")
 def read_root():
     return {"status": "ok", "app": "SqlForge"}
+
+# --- Automation / Scheduling Endpoints ---
+
+@app.get("/automation/tasks")
+def get_scheduled_tasks():
+    return internal_db.get_scheduled_tasks()
+
+@app.post("/automation/tasks")
+def create_scheduled_task(task: Dict[str, Any]):
+    if not task.get("id"):
+        task["id"] = str(uuid.uuid4())
+    
+    internal_db.save_scheduled_task(task)
+    scheduler.reload_jobs() # Refresh scheduler
+    return task
+
+@app.delete("/automation/tasks/{task_id}")
+def delete_scheduled_task(task_id: str):
+    internal_db.delete_scheduled_task(task_id)
+    scheduler.reload_jobs()
+    return {"status": "deleted"}
+
+@app.post("/automation/tasks/{task_id}/run")
+def run_task_manually(task_id: str):
+    # Run in background via scheduler or immediately?
+    # Running immediately in this thread might block, but good for feedback.
+    # Better: Trigger via scheduler's job store or just call execute_task
+    # We'll call execute_task directly but wrap it to not block too long if possible,
+    # or just return "Triggered".
+    # For user feedback, let's run it and return result, assuming it's not hours long.
+    # If it is long, the client should probably use a background trigger.
+    # For now, synchronous execution for simplicity of feedback.
+    try:
+        scheduler.execute_task(task_id)
+        return {"status": "triggered"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/automation/history")
+def get_task_history_endpoint(task_id: str = None):
+    return internal_db.get_task_history(task_id)
 
 @app.get("/connections", response_model=List[ConnectionConfig])
 def get_connections():
@@ -211,6 +255,29 @@ def run_batch_queries(request: Dict[str, Any]):
 @app.get("/history", response_model=List[Dict[str, Any]])
 def get_history_endpoint():
     return internal_db.get_history()
+
+# --- AUTOMATION ---
+
+@app.get("/automation/tasks")
+def get_tasks():
+    return automation_engine.get_tasks()
+
+@app.post("/automation/tasks")
+def save_task(task: Dict[str, Any]):
+    return automation_engine.save_task(task)
+
+@app.delete("/automation/tasks/{task_id}")
+def delete_task(task_id: str):
+    automation_engine.delete_task(task_id)
+    return {"status": "deleted"}
+
+@app.post("/automation/tasks/{task_id}/run")
+def run_task(task_id: str):
+    return automation_engine.run_task(task_id)
+
+@app.get("/automation/history")
+def get_task_history(task_id: Optional[str] = None):
+    return automation_engine.get_history(task_id)
 
 @app.get("/ai/models")
 def list_ai_models(api_key: str):

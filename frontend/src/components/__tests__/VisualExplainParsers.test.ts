@@ -45,7 +45,7 @@ describe('VisualExplain Parsers', () => {
       }
     };
 
-    const { nodes, edges } = parseMysqlPlan(mockPlan);
+    const { nodes } = parseMysqlPlan(mockPlan);
 
     // MySQL parser currently creates a node for 'table' 
     // query_block is traversed but returns early after recursing into its content

@@ -514,8 +514,13 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                     padding: { top: 16 },
                     scrollBeyondLastLine: false,
                     automaticLayout: true,
-                    renderLineHighlight: 'none',
+                    renderLineHighlight: 'all',
                     contextmenu: true,
+                    readOnly: false,
+                    scrollbar: {
+                        vertical: 'visible',
+                        horizontal: 'visible'
+                    }
                 }}
             />
         </div>

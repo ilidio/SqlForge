@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -19,16 +19,19 @@ interface Props {
   onSelectKey?: (key: string) => void;
   onSort?: (column: string, direction: 'ASC' | 'DESC' | null) => void;
   onPageSizeChange?: (size: number) => void;
+  onPageChange?: (page: number) => void;
   sortColumn?: string | null;
   sortDirection?: 'ASC' | 'DESC' | null;
   pageSize?: number;
+  page?: number;
+  totalRows?: number;
 }
 
 export interface ResultsTableHandle {
     focus: () => void;
 }
 
-export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, dbType, data, onRefresh, onSelectKey, onSort, onPageSizeChange, sortColumn, sortDirection, pageSize = 100 }, ref) => {
+export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, dbType, data, onRefresh, onSelectKey, onSort, onPageSizeChange, onPageChange, sortColumn, sortDirection, pageSize = 10, page = 1, totalRows = 0 }, ref) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [editingCell, setEditingCell] = useState<{rowIndex: number, column: string} | null>(null);
   const [changes, setChanges] = useState<Record<string, unknown>>({}); 
@@ -289,7 +292,7 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
       </ScrollArea>
       <div className="bg-muted/50 border-t border-border text-muted-foreground text-[10px] px-3 py-1 flex justify-between items-center font-medium h-9">
           <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-[120px]">
                   <span className="font-bold text-foreground/70">{data.rows.length}</span> rows
                   <span className="opacity-30">|</span>
                   <span className="font-bold text-foreground/70">{data.columns.length}</span> columns
@@ -307,8 +310,76 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
                       <RotateCcw size={10} />
                   </Button>
               </div>
+
+              {onPageChange && (
+                  <div className="flex items-center gap-1 border-l border-border/50 pl-4">
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={page <= 1}
+                        onClick={() => onPageChange(1)}
+                        title="First Page"
+                      >
+                          <ChevronsLeft size={12} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={page <= 1}
+                        onClick={() => onPageChange(page - 1)}
+                        title="Previous Page"
+                      >
+                          <ChevronLeft size={12} />
+                      </Button>
+                      
+                      <div className="flex items-center gap-1.5 px-2 bg-background/50 border rounded h-6 text-[10px]">
+                          <span className="opacity-60 uppercase font-bold text-[8px]">Page</span>
+                          <span className="font-black text-foreground">{page}</span>
+                          {totalRows > 0 && (
+                              <>
+                                <span className="opacity-30">/</span>
+                                <span className="opacity-60">{Math.ceil(totalRows / pageSize)}</span>
+                              </>
+                          )}
+                      </div>
+
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={totalRows > 0 ? page >= Math.ceil(totalRows / pageSize) : data.rows.length < pageSize}
+                        onClick={() => onPageChange(page + 1)}
+                        title="Next Page"
+                      >
+                          <ChevronRight size={12} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={totalRows > 0 ? page >= Math.ceil(totalRows / pageSize) : true}
+                        onClick={() => onPageChange(Math.ceil(totalRows / pageSize))}
+                        title="Last Page"
+                      >
+                          <ChevronsRight size={12} />
+                      </Button>
+                  </div>
+              )}
           </div>
-          <div className="flex items-center gap-1 opacity-60"><CheckCircle size={10} className="text-emerald-500" />Query successful</div>
+          <div className="flex items-center gap-3">
+              {totalRows > 0 && (
+                  <div className="flex items-center gap-1 opacity-60 text-[9px] uppercase font-bold">
+                      <Database size={10} />
+                      {totalRows.toLocaleString()} Total Records
+                  </div>
+              )}
+              <div className="flex items-center gap-1 opacity-60">
+                  <CheckCircle size={10} className="text-emerald-500" />
+                  Query successful
+              </div>
+          </div>
       </div>
     </div>
   );

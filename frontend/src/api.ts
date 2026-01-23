@@ -50,6 +50,33 @@ export interface AlterTableRequest {
   column_def?: ColumnDefinition;
 }
 
+export interface ScheduledTask {
+  id?: string;
+  name: string;
+  task_type: 'backup' | 'sync' | 'query' | 'batch';
+  schedule_config: {
+    type: 'cron' | 'interval';
+    expression?: string; // For cron, e.g., "0 2 * * 0"
+    weeks?: number;
+    days?: number;
+    hours?: number;
+    minutes?: number;
+    seconds?: number;
+  };
+  task_config: any;
+  enabled: boolean;
+  last_run?: string;
+}
+
+export interface TaskHistory {
+  id: number;
+  task_id: string;
+  timestamp: string;
+  status: 'success' | 'error';
+  result: any;
+  duration_ms: number;
+}
+
 export const api = {
   getConnections: () => axios.get<ConnectionConfig[]>(`${API_URL}/connections`).then(r => r.data),
   saveConnection: (config: ConnectionConfig) => axios.post<ConnectionConfig>(`${API_URL}/connections`, config).then(r => r.data),
@@ -91,5 +118,12 @@ export const api = {
   runBenchmark: (connId: string, sql: string, concurrency: number, duration: number) => axios.post<any>(`${API_URL}/query/benchmark`, { connection_id: connId, sql, concurrency, duration }).then(r => r.data),
   explainQuery: (connId: string, sql: string, analyze: boolean = false) => axios.post<{plan: any, dialect: string, error: string | null}>(`${API_URL}/query/explain`, { connection_id: connId, sql, analyze }).then(r => r.data),
   diffSchemas: (sourceId: string, targetId: string, mode: string = 'structure') => axios.post<{sql: string}>(`${API_URL}/pro/sync/diff`, { source_connection_id: sourceId, target_connection_id: targetId, mode }).then(r => r.data),
-  executeSync: (sourceId: string, targetId: string, mode: string = 'structure', dryRun: boolean = true) => axios.post<{status: string, message: string, sql?: string}>(`${API_URL}/pro/sync/execute`, { source_connection_id: sourceId, target_connection_id: targetId, mode, dry_run: dryRun }).then(r => r.data)
+  executeSync: (sourceId: string, targetId: string, mode: string = 'structure', dryRun: boolean = true) => axios.post<{status: string, message: string, sql?: string}>(`${API_URL}/pro/sync/execute`, { source_connection_id: sourceId, target_connection_id: targetId, mode, dry_run: dryRun }).then(r => r.data),
+  
+  // Automation
+  getScheduledTasks: () => axios.get<ScheduledTask[]>(`${API_URL}/automation/tasks`).then(r => r.data),
+  saveScheduledTask: (task: ScheduledTask) => axios.post<ScheduledTask>(`${API_URL}/automation/tasks`, task).then(r => r.data),
+  deleteScheduledTask: (taskId: string) => axios.delete(`${API_URL}/automation/tasks/${taskId}`).then(r => r.data),
+  runTaskManually: (taskId: string) => axios.post<{status: string}>(`${API_URL}/automation/tasks/${taskId}/run`).then(r => r.data),
+  getTaskHistory: (taskId?: string) => axios.get<TaskHistory[]>(`${API_URL}/automation/history`, { params: { task_id: taskId } }).then(r => r.data),
 };

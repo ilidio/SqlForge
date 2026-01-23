@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Database, CheckCircle2, ChevronRight, Zap, Users, ShieldCheck, BarChart3, AlertTriangle } from 'lucide-react';
+import { Sparkles, CheckCircle2, ChevronRight, Zap, Users, ShieldCheck, BarChart3, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '../api';
 import { toast } from 'sonner';

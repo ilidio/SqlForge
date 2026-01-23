@@ -18,6 +18,7 @@ import BackupWizard from './components/BackupWizard';
 import ExportWizard from './components/ExportWizard';
 import ImportWizard from './components/ImportWizard';
 import HydrateWizard from './components/HydrateWizard';
+import { AutomationDashboard } from './components/AutomationDashboard';
 import MonitorDashboard from './components/MonitorDashboard';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { api, type ConnectionConfig } from './api';
@@ -36,6 +37,8 @@ interface Tab {
   sortColumn?: string | null;
   sortDirection?: 'ASC' | 'DESC' | null;
   pageSize?: number;
+  page?: number;
+  totalRows?: number;
 }
 
 function App() {
@@ -60,6 +63,7 @@ function App() {
   const [importTarget, setImportTarget] = useState<{connId: string, tableName: string} | null>(null);
   const [isHydrateOpen, setIsHydrateOpen] = useState(false);
   const [hydrateTarget, setHydrateTarget] = useState<{connId: string, tableName: string} | null>(null);
+  const [isAutomationOpen, setIsAutomationOpen] = useState(false);
   const [isMonitorOpen, setIsMonitorOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [helpTab, setHelpTab] = useState('shortcuts');
@@ -82,6 +86,7 @@ function App() {
     }
   };
 
+
   useEffect(() => {
     setLoadingConnections(true);
     api.getConnections().then(conns => {
@@ -98,6 +103,12 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+      }
+
       // Command Palette (⌘K)
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -285,7 +296,9 @@ function App() {
       connectionId: connId,
       content: tableName,
       data: { columns: [], rows: [], error: null },
-      pageSize: initialPageSize
+      pageSize: initialPageSize,
+      page: 1,
+      totalRows: 0
     };
     
     setTabs(prev => [...prev, newTab]);
@@ -294,6 +307,15 @@ function App() {
     try {
         const res = await api.runQuery(connId, query.replace(`LIMIT ${localStorage.getItem('max_rows') || '100'}`, `LIMIT ${initialPageSize}`));
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: res } : t));
+        
+        // Fetch total count for SQL DBs
+        if (conn?.type !== 'redis' && conn?.type !== 'mongodb') {
+            const countRes = await api.runQuery(connId, `SELECT COUNT(*) as total FROM ${tableName}`);
+            if (countRes.rows && countRes.rows.length > 0) {
+                const total = Number(countRes.rows[0].total);
+                setTabs(prev => prev.map(t => t.id === tabId ? { ...t, totalRows: total } : t));
+            }
+        }
     } catch (e: any) {
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: { columns: [], rows: [], error: e.message } } : t));
     }
@@ -326,7 +348,33 @@ function App() {
   };
 
   const handlePageSizeChange = (tabId: string, size: number) => {
-    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, pageSize: size } : t));
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, pageSize: size, page: 1 } : t));
+  };
+
+  const handlePageChange = async (tabId: string, page: number) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab || tab.type !== 'table') return;
+
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, page } : t));
+
+    const conn = connections.find(c => c.id === tab.connectionId);
+    let query = "";
+    
+    if (conn?.type === 'redis' || conn?.type === 'mongodb') {
+        return;
+    } else {
+        const pageSize = tab.pageSize || 10;
+        const offset = (page - 1) * pageSize;
+        const orderClause = tab.sortDirection ? ` ORDER BY ${tab.sortColumn} ${tab.sortDirection}` : "";
+        query = `SELECT * FROM ${tab.content}${orderClause} LIMIT ${pageSize} OFFSET ${offset}`;
+    }
+
+    try {
+        const res = await api.runQuery(tab.connectionId, query);
+        setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: res } : t));
+    } catch (e: any) {
+        toast.error(`Page navigation failed: ${e.message}`);
+    }
   };
 
   const closeTab = (id: string, e?: React.MouseEvent | { stopPropagation: () => void }) => {
@@ -538,6 +586,7 @@ function App() {
           if (action === 'backup') { setBackupMode('backup'); setIsBackupOpen(true); }
           if (action === 'restore') { setBackupMode('restore'); setIsBackupOpen(true); }
           if (action === 'monitor') setIsMonitorOpen(true);
+          if (action === 'automation') setIsAutomationOpen(true);
           if (action === 'refresh') setRefreshTrigger(prev => prev + 1);
       }} />
       <div className="flex-1 flex overflow-hidden">
@@ -642,8 +691,11 @@ function App() {
                     sortColumn={activeTab.sortColumn}
                     sortDirection={activeTab.sortDirection}
                     pageSize={activeTab.pageSize}
+                    page={activeTab.page}
+                    totalRows={activeTab.totalRows}
                     onSort={(col, dir) => handleSort(activeTab.id, col, dir)}
                     onPageSizeChange={(size) => handlePageSizeChange(activeTab.id, size)}
+                    onPageChange={(page) => handlePageChange(activeTab.id, page)}
                     onRefresh={async () => {
                         const conn = connections.find(c => c.id === activeTab.connectionId);
                         let q = "";
@@ -651,8 +703,9 @@ function App() {
                         else if (conn?.type === 'mongodb') q = activeTab.content!;
                         else {
                             const pageSize = activeTab.pageSize || 10;
+                            const offset = ((activeTab.page || 1) - 1) * pageSize;
                             const orderClause = activeTab.sortDirection ? ` ORDER BY ${activeTab.sortColumn} ${activeTab.sortDirection}` : "";
-                            q = `SELECT * FROM ${activeTab.content}${orderClause} LIMIT ${pageSize}`;
+                            q = `SELECT * FROM ${activeTab.content}${orderClause} LIMIT ${pageSize} OFFSET ${offset}`;
                         }
                         const res = await api.runQuery(activeTab.connectionId, q);
                         setTabs(prev => prev.map(t => t.id === activeTab.id ? { ...t, data: res } : t));
@@ -796,6 +849,11 @@ function App() {
       <MonitorDashboard 
         open={isMonitorOpen} 
         onOpenChange={setIsMonitorOpen} 
+      />
+
+      <AutomationDashboard 
+        open={isAutomationOpen} 
+        onOpenChange={setIsAutomationOpen} 
       />
 
       <ConfirmDialog 

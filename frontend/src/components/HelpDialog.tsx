@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github, Database, Sparkles, RefreshCw, Activity, Wand2, FileCode, ShieldCheck, ShieldAlert, Zap, Download } from 'lucide-react';
+import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github, Database, Sparkles, RefreshCw, Activity, Wand2, FileCode, ShieldCheck } from 'lucide-react';
 import { Logo } from './ui/Logo';
 
 interface HelpDialogProps {
