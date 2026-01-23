@@ -17,6 +17,7 @@ import SyncWizard from './components/SyncWizard';
 import BackupWizard from './components/BackupWizard';
 import ExportWizard from './components/ExportWizard';
 import ImportWizard from './components/ImportWizard';
+import HydrateWizard from './components/HydrateWizard';
 import MonitorDashboard from './components/MonitorDashboard';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { api, type ConnectionConfig } from './api';
@@ -32,6 +33,9 @@ interface Tab {
   connectionId: string;
   content?: string; // For query: sql; For table: tableName; For schema: tableName
   data?: {columns: string[], rows: Record<string, unknown>[], error: string | null};
+  sortColumn?: string | null;
+  sortDirection?: 'ASC' | 'DESC' | null;
+  pageSize?: number;
 }
 
 function App() {
@@ -54,6 +58,8 @@ function App() {
   const [exportTarget, setExportTarget] = useState<{connId: string, tableName: string} | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importTarget, setImportTarget] = useState<{connId: string, tableName: string} | null>(null);
+  const [isHydrateOpen, setIsHydrateOpen] = useState(false);
+  const [hydrateTarget, setHydrateTarget] = useState<{connId: string, tableName: string} | null>(null);
   const [isMonitorOpen, setIsMonitorOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [helpTab, setHelpTab] = useState('shortcuts');
@@ -271,24 +277,56 @@ function App() {
     }
     
     const tabId = Math.random().toString(36).substring(7);
+    const initialPageSize = 10;
     const newTab: Tab = {
       id: tabId,
       title: tableName,
       type: 'table',
       connectionId: connId,
       content: tableName,
-      data: { columns: [], rows: [], error: null }
+      data: { columns: [], rows: [], error: null },
+      pageSize: initialPageSize
     };
     
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(tabId);
 
     try {
-        const res = await api.runQuery(connId, query);
+        const res = await api.runQuery(connId, query.replace(`LIMIT ${localStorage.getItem('max_rows') || '100'}`, `LIMIT ${initialPageSize}`));
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: res } : t));
     } catch (e: any) {
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: { columns: [], rows: [], error: e.message } } : t));
     }
+  };
+
+  const handleSort = async (tabId: string, column: string, direction: 'ASC' | 'DESC' | null) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab || tab.type !== 'table') return;
+
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, sortColumn: column, sortDirection: direction } : t));
+
+    const conn = connections.find(c => c.id === tab.connectionId);
+    let query = "";
+    
+    if (conn?.type === 'redis' || conn?.type === 'mongodb') {
+        // We don't support custom sort query for these via ResultsTable yet
+        return;
+    } else {
+        const pageSize = tab.pageSize || 10;
+        const orderClause = direction ? ` ORDER BY ${column} ${direction}` : "";
+        query = `SELECT * FROM ${tab.content}${orderClause} LIMIT ${pageSize}`;
+    }
+
+    try {
+        const res = await api.runQuery(tab.connectionId, query);
+        setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data: res } : t));
+    } catch (e: any) {
+        toast.error(`Sorting failed: ${e.message}`);
+    }
+  };
+
+  const handlePageSizeChange = (tabId: string, size: number) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, pageSize: size } : t));
   };
 
   const closeTab = (id: string, e?: React.MouseEvent | { stopPropagation: () => void }) => {
@@ -542,6 +580,7 @@ function App() {
             }}
             onExportTable={(connId, tableName) => { setExportTarget({connId, tableName}); setIsExportOpen(true); }}
             onImportTable={(connId, tableName) => { setImportTarget({connId, tableName}); setIsImportOpen(true); }}
+            onHydrateTable={(connId, tableName) => { setHydrateTarget({connId, tableName}); setIsHydrateOpen(true); }}
             onDropObject={(connId, name, type) => { setObjectToDrop({connId, name, type}); setIsConfirmDropOpen(true); }}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectConnection={setSelectedConnectionId}
@@ -600,14 +639,20 @@ function App() {
                     connectionId={activeTab.connectionId}
                     dbType={connections.find(c => c.id === activeTab.connectionId)?.type}
                     tableName={activeTab.content}
+                    sortColumn={activeTab.sortColumn}
+                    sortDirection={activeTab.sortDirection}
+                    pageSize={activeTab.pageSize}
+                    onSort={(col, dir) => handleSort(activeTab.id, col, dir)}
+                    onPageSizeChange={(size) => handlePageSizeChange(activeTab.id, size)}
                     onRefresh={async () => {
                         const conn = connections.find(c => c.id === activeTab.connectionId);
                         let q = "";
                         if (conn?.type === 'redis') q = activeTab.content!;
                         else if (conn?.type === 'mongodb') q = activeTab.content!;
                         else {
-                            const maxRows = localStorage.getItem('max_rows') || '100';
-                            q = `SELECT * FROM ${activeTab.content} LIMIT ${maxRows}`;
+                            const pageSize = activeTab.pageSize || 10;
+                            const orderClause = activeTab.sortDirection ? ` ORDER BY ${activeTab.sortColumn} ${activeTab.sortDirection}` : "";
+                            q = `SELECT * FROM ${activeTab.content}${orderClause} LIMIT ${pageSize}`;
                         }
                         const res = await api.runQuery(activeTab.connectionId, q);
                         setTabs(prev => prev.map(t => t.id === activeTab.id ? { ...t, data: res } : t));
@@ -739,6 +784,13 @@ function App() {
         onOpenChange={setIsImportOpen}
         connectionId={importTarget?.connId || null}
         tableName={importTarget?.tableName || null}
+      />
+
+      <HydrateWizard 
+        open={isHydrateOpen}
+        onOpenChange={setIsHydrateOpen}
+        connectionId={hydrateTarget?.connId || null}
+        tableName={hydrateTarget?.tableName || null}
       />
 
       <MonitorDashboard 

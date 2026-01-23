@@ -72,17 +72,21 @@ export const api = {
           headers: { 'Content-Type': 'multipart/form-data' }
       }).then(r => r.data);
   },
-  getExportUrl: (connId: string, tableName: string, format: 'csv' | 'json' | 'sql') => {
+  getExportUrl: (connId: string, tableName: string, format: 'csv' | 'json' | 'sql', masked: boolean = false) => {
       // Return the direct URL for streaming
-      return `${API_URL}/connections/${connId}/export/${tableName}?format=${format}`;
+      return `${API_URL}/connections/${connId}/export/${tableName}?format=${format}&masked=${masked}`;
   },
   runQuery: (connId: string, sql: string) => axios.post<{columns: string[], rows: Record<string, unknown>[], error: string | null}>(`${API_URL}/query`, { connection_id: connId, sql }).then(r => r.data),
   runBatchQueries: (connId: string, operations: any[]) => axios.post<{results: {success: boolean, error: string | null}[]}>(`${API_URL}/query/batch`, { connection_id: connId, operations: operations }).then(r => r.data),
   getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),
   generateSQL: (connId: string, prompt: string, apiKey: string, model: string) => axios.post<{sql: string}>(`${API_URL}/ai/generate`, { connection_id: connId, prompt, api_key: apiKey, model }).then(r => r.data),
+  refactorSQL: (connId: string, sql: string, apiKey: string, model: string) => axios.post<{refactored_sql: string, explanation: string, changes: any[]}>(`${API_URL}/pro/refactorer/refactor`, { connection_id: connId, prompt: sql, api_key: apiKey, model }).then(r => r.data),
+  hydrateTable: (connId: string, tableName: string, count: number, apiKey: string, model: string) => axios.post<{success: boolean, count: number}>(`${API_URL}/pro/generator/hydrate`, { connection_id: connId, table_name: tableName, count, api_key: apiKey, model }).then(r => r.data),
   analyzeQuery: (connId: string, sql: string, apiKey: string, model: string) => axios.post<any>(`${API_URL}/pro/index-advisor/analyze`, { connection_id: connId, prompt: sql, api_key: apiKey, model }).then(r => r.data),
   testVirtualIndex: (connId: string, sql: string, indexDdl: string) => axios.post<any>(`${API_URL}/pro/what-if/analyze`, { connection_id: connId, sql, index_ddl: indexDdl }).then(r => r.data),
   getLocks: (connId: string) => axios.get<{nodes: any[], edges: any[], error?: string}>(`${API_URL}/monitor/locks/${connId}`).then(r => r.data),
+  getHealthAudit: (connId: string) => axios.get<{score: number, risks: any[], summary: string}>(`${API_URL}/monitor/health/${connId}`).then(r => r.data),
+  getProcesses: (connId: string) => axios.get<any[]>(`${API_URL}/monitor/processes/${connId}`).then(r => r.data),
   killSession: (connId: string, pid: string) => axios.post<{success: boolean, message: string}>(`${API_URL}/monitor/kill`, { connection_id: connId, pid }).then(r => r.data),
   runBenchmark: (connId: string, sql: string, concurrency: number, duration: number) => axios.post<any>(`${API_URL}/query/benchmark`, { connection_id: connId, sql, concurrency, duration }).then(r => r.data),
   explainQuery: (connId: string, sql: string, analyze: boolean = false) => axios.post<{plan: any, dialect: string, error: string | null}>(`${API_URL}/query/explain`, { connection_id: connId, sql, analyze }).then(r => r.data),

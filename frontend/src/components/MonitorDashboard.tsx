@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { api, type ConnectionConfig } from '../api';
 import { toast } from 'sonner';
-import { Activity, Users, Clock, Zap, Database, Trash2, RefreshCw, BarChart3, ShieldAlert, ExternalLink, Layout } from 'lucide-react';
+import { Activity, Users, Clock, Zap, Database, Trash2, RefreshCw, BarChart3, ShieldAlert, ExternalLink, Layout, ShieldCheck, AlertTriangle, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +18,9 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [metrics, setMetrics] = useState<any[]>([]);
     const [processes, setProcesses] = useState<any[]>([]);
+    const [healthScore, setHealthScore] = useState<number>(100);
+    const [risks, setRisks] = useState<any[]>([]);
+    const [auditLoading, setAuditLoading] = useState(false);
 
     useEffect(() => {
         if (open) {
@@ -28,7 +31,33 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
         }
     }, [open]);
 
-    // Simulate real-time data
+    const fetchData = async () => {
+        if (!selectedId) return;
+        setAuditLoading(true);
+        try {
+            const [health, procList] = await Promise.all([
+                api.getHealthAudit(selectedId),
+                api.getProcesses(selectedId)
+            ]);
+            setHealthScore(health.score);
+            setRisks(health.risks);
+            setProcesses(procList);
+        } catch (e) {
+            console.error("Failed to fetch monitoring data", e);
+        } finally {
+            setAuditLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (open && selectedId) {
+            fetchData();
+            const interval = setInterval(fetchData, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [open, selectedId]);
+
+    // Simulate real-time data for charts
     useEffect(() => {
         if (!open || !selectedId) return;
 
@@ -40,13 +69,6 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                 connections: Math.floor(Math.random() * 10) + 2
             };
             setMetrics(prev => [...prev.slice(-19), newMetric]);
-
-            // Mock Processes
-            setProcesses([
-                { pid: 1024, user: 'admin', query: 'SELECT * FROM users LIMIT 1000', duration: '00:00:02', state: 'active' },
-                { pid: 2056, user: 'system', query: 'VACUUM ANALYZE', duration: '00:00:45', state: 'maintenance' },
-                { pid: 3089, user: 'app_user', query: 'INSERT INTO logs (msg) VALUES (...)', duration: '00:00:01', state: 'idle' }
-            ]);
         }, 2000);
 
         return () => clearInterval(interval);
@@ -88,6 +110,9 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                                 <TabsTrigger value="stats" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-12 gap-2 text-xs font-bold uppercase tracking-wider">
                                     <Activity size={14} /> Live Stats
                                 </TabsTrigger>
+                                <TabsTrigger value="health" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-12 gap-2 text-xs font-bold uppercase tracking-wider">
+                                    <ShieldCheck size={14} /> Health Audit
+                                </TabsTrigger>
                                 <TabsTrigger value="insights" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 h-12 gap-2 text-xs font-bold uppercase tracking-wider">
                                     <Layout size={14} /> Insights (Grafana)
                                 </TabsTrigger>
@@ -101,7 +126,7 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                                     { label: 'Transactions/s', value: metrics[metrics.length-1]?.tps || 0, icon: Zap, color: 'text-amber-500' },
                                     { label: 'Active Connections', value: metrics[metrics.length-1]?.connections || 0, icon: Users, color: 'text-blue-500' },
                                     { label: 'CPU Load', value: `${metrics[metrics.length-1]?.cpu || 0}%`, icon: BarChart3, color: 'text-purple-500' },
-                                    { label: 'Health Score', value: '98%', icon: ShieldAlert, color: 'text-emerald-500' },
+                                    { label: 'Health Score', value: `${healthScore}%`, icon: ShieldAlert, color: healthScore > 80 ? 'text-emerald-500' : healthScore > 50 ? 'text-amber-500' : 'text-destructive' },
                                 ].map((stat, i) => (
                                     <div key={i} className="bg-background border rounded-xl p-4 shadow-sm space-y-2">
                                         <div className="flex items-center justify-between">
@@ -204,6 +229,95 @@ export default function MonitorDashboard({ open, onOpenChange }: MonitorDashboar
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="health" className="flex-1 p-6 space-y-6 mt-0 overflow-y-auto">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-bold">Database Health Audit</h3>
+                                    <p className="text-xs text-muted-foreground">Automated risk assessment based on system catalogs and operational metrics.</p>
+                                </div>
+                                <Button size="sm" variant="outline" className="gap-2" onClick={fetchData} loading={auditLoading}>
+                                    <RefreshCw size={14} /> Run Fresh Audit
+                                </Button>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="col-span-1 bg-background border rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-sm">
+                                    <div className="relative w-32 h-32 flex items-center justify-center">
+                                        <svg className="w-full h-full transform -rotate-90">
+                                            <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-muted/20" />
+                                            <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                                                strokeDasharray={364.4} 
+                                                strokeDashoffset={364.4 - (364.4 * healthScore) / 100}
+                                                className={cn(
+                                                    "transition-all duration-1000 ease-in-out",
+                                                    healthScore > 80 ? "text-emerald-500" : healthScore > 50 ? "text-amber-500" : "text-destructive"
+                                                )}
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span className="text-3xl font-black">{healthScore}</span>
+                                            <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Score</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className={cn(
+                                            "text-sm font-bold",
+                                            healthScore > 80 ? "text-emerald-600" : healthScore > 50 ? "text-amber-600" : "text-destructive"
+                                        )}>
+                                            {healthScore > 80 ? "Instance is Healthy" : healthScore > 50 ? "Needs Attention" : "Critical Risks Found"}
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground">Audit last updated: {new Date().toLocaleTimeString()}</p>
+                                    </div>
+                                </div>
+
+                                <div className="col-span-2 space-y-4">
+                                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                        <AlertTriangle size={14} /> Identified Risks ({risks.length})
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {risks.length === 0 ? (
+                                            <div className="p-12 border border-dashed rounded-xl flex flex-col items-center justify-center text-center space-y-3 bg-emerald-500/5 border-emerald-500/20">
+                                                <ShieldCheck size={40} className="text-emerald-500" />
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-bold">No Operational Risks Detected</div>
+                                                    <p className="text-xs text-muted-foreground max-w-[280px]">Your database instance is running within optimal parameters for connections, transaction age, and index health.</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            risks.map((risk, i) => (
+                                                <div key={i} className="p-4 border rounded-xl bg-background flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
+                                                    <div className={cn(
+                                                        "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                                                        risk.severity === 'Critical' ? "bg-destructive/10 text-destructive" : 
+                                                        risk.severity === 'High' ? "bg-amber-500/10 text-amber-600" : "bg-blue-500/10 text-blue-600"
+                                                    )}>
+                                                        <ShieldAlert size={20} />
+                                                    </div>
+                                                    <div className="flex-1 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="text-sm font-bold">{risk.type}</div>
+                                                            <span className={cn(
+                                                                "px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider",
+                                                                risk.severity === 'Critical' ? "bg-destructive text-white" : 
+                                                                risk.severity === 'High' ? "bg-amber-500 text-white" : "bg-blue-500 text-white"
+                                                            )}>
+                                                                {risk.severity} Severity
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground leading-relaxed">{risk.description}</p>
+                                                        <div className="pt-2 flex items-center gap-4 text-[10px] font-medium">
+                                                            <span className="flex items-center gap-1"><Zap size={10} className="text-primary" /> Impact Score: -{risk.impact}</span>
+                                                            <span className="flex items-center gap-1 text-primary cursor-pointer hover:underline"><History size={10} /> View details</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </TabsContent>
 

@@ -10,6 +10,7 @@ import io
 import shlex
 from sshtunnel import SSHTunnelForwarder
 import time
+from pro import masking
 
 # --- SSH TUNNEL MANAGER ---
 
@@ -827,7 +828,7 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
     except Exception as e:
         return {"success": False, "error": f"Database error: {str(e)}"}
 
-def stream_export_data(config: ConnectionConfig, table_name: str, file_format: str):
+def stream_export_data(config: ConnectionConfig, table_name: str, file_format: str, mask_pii: bool = False):
     if config.type == 'redis':
         def generate_redis():
             host = config.host
@@ -843,13 +844,20 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
                 yield "key,value\n"
                 for k in keys:
                     v = r.get(k)
+                    if mask_pii:
+                        k = masking.mask_value(k, 'key')
+                        v = masking.mask_value(v, 'value')
                     yield f'"{k}","{str(v).replace(chr(34), chr(34)+chr(34))}"\n'
             else: # JSON
                 yield "[\n"
                 first = True
                 for k in keys:
                     if not first: yield ",\n"
-                    yield json.dumps({"key": k, "value": r.get(k)})
+                    v = r.get(k)
+                    if mask_pii:
+                        k = masking.mask_value(k, 'key')
+                        v = masking.mask_value(v, 'value')
+                    yield json.dumps({"key": k, "value": v})
                     first = False
                 yield "\n]"
         return generate_redis()
@@ -866,20 +874,36 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
             client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/")
             db = client[config.database]
             cursor = db[table_name].find({})
+            
+            # Pre-detect PII if masking is on
+            mask_map = {}
+            first_doc = db[table_name].find_one()
+            if mask_pii and first_doc:
+                mask_map = masking.get_masking_map(list(first_doc.keys()))
+
             if file_format == 'csv':
-                first_doc = db[table_name].find_one()
                 if not first_doc: return
                 columns = list(first_doc.keys())
                 yield ",".join(columns) + "\n"
                 for doc in cursor:
                     doc['_id'] = str(doc['_id'])
-                    yield ",".join([f'"{str(doc.get(c, "")).replace(chr(34), chr(34)+chr(34))}"' for c in columns]) + "\n"
+                    row_values = []
+                    for c in columns:
+                        val = doc.get(c, "")
+                        if mask_pii and mask_map.get(c):
+                            val = masking.mask_value(val, c)
+                        row_values.append(f'"{str(val).replace(chr(34), chr(34)+chr(34))}"')
+                    yield ",".join(row_values) + "\n"
             else: # JSON
                 yield "[\n"
                 first = True
                 for doc in cursor:
                     if not first: yield ",\n"
                     doc['_id'] = str(doc['_id'])
+                    if mask_pii:
+                        for c, should_mask in mask_map.items():
+                            if should_mask and c in doc:
+                                doc[c] = masking.mask_value(doc[c], c)
                     yield json.dumps(doc)
                     first = False
                 yield "\n]"
@@ -891,7 +915,11 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
         with engine.connect() as conn:
             # For massive tables, we should use stream_results=True if supported by dialect
             result = conn.execution_options(stream_results=True).execute(text(f"SELECT * FROM {table_name}"))
-            columns = result.keys()
+            columns = list(result.keys())
+            
+            mask_map = {}
+            if mask_pii:
+                mask_map = masking.get_masking_map(columns)
             
             if file_format == 'csv':
                 # Header
@@ -899,7 +927,11 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
                 for row in result:
                     # Very basic CSV quoting
                     values = []
-                    for val in row:
+                    for i, val in enumerate(row):
+                        col_name = columns[i]
+                        if mask_pii and mask_map.get(col_name):
+                            val = masking.mask_value(val, col_name)
+                        
                         s = str(val) if val is not None else ""
                         if "," in s or '"' in s or "\n" in s:
                             s = '"' + s.replace('"', '""') + '"'
@@ -916,6 +948,10 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
                     row_dict = dict(row._mapping)
                     # Convert non-serializable objects (dates, etc)
                     for k, v in row_dict.items():
+                        if mask_pii and mask_map.get(k):
+                            v = masking.mask_value(v, k)
+                            row_dict[k] = v
+                        
                         if hasattr(v, 'isoformat'):
                             row_dict[k] = v.isoformat()
                     

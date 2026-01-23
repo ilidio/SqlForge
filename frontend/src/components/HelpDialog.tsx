@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github, Database, Sparkles, RefreshCw, Activity, Wand2, FileCode } from 'lucide-react';
+import { HelpCircle, Keyboard, Info, Book, ExternalLink, Github, Database, Sparkles, RefreshCw, Activity, Wand2, FileCode, ShieldCheck, ShieldAlert, Zap, Download } from 'lucide-react';
 import { Logo } from './ui/Logo';
 
 interface HelpDialogProps {
@@ -98,41 +98,41 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
 
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                        <Sparkles size={14} className="text-purple-500" /> AI SQL Assistant
+                                        <Sparkles size={14} className="text-purple-500" /> AI SQL Assistant & Refactorer
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        Powered by **Google Gemini**, the AI Assistant converts natural language into valid SQL. 
-                                        It is schema-aware, meaning it understands your tables and columns to provide accurate queries.
+                                        Powered by **Google Gemini**, convert natural language into SQL and optimize existing code. 
+                                        The **Refactorer** detects non-SARGable predicates and N+1 patterns, suggesting index-friendly rewrites on the fly.
                                     </p>
                                 </section>
 
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                        <RefreshCw size={14} className="text-emerald-500" /> Schema & Data Sync
+                                        <ShieldCheck size={14} className="text-indigo-500" /> Data Privacy Masking (Safe Export)
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        The **Sync Wizard** uses `sqlglot` to calculate diffs between different database types. 
-                                        You can generate migration plans to sync structures from a development SQLite to a production Postgres seamlessly.
+                                        Export production data securely. **Privacy Mode** automatically detects PII (emails, phones, addresses) 
+                                        and masks them using one-way hashing during the export stream for CSV and JSON formats.
                                     </p>
                                 </section>
 
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                        <Activity size={14} className="text-red-500" /> Lock & Deadlock Visualizer
+                                        <RefreshCw size={14} className="text-emerald-500" /> Schema Sync & Data Hydrator
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        Identify and resolve concurrency issues in real-time. View the **Blocking Chain** graph to see exactly which 
-                                        sessions are holding up your database. Includes a **"Kill Session"** feature to safely terminate root cause blockers.
+                                        Sync schemas across database types and generate massive test datasets. The **Smart Hydrator** 
+                                        uses AI to inject realistic semantic data while strictly respecting **Foreign Key** relationships.
                                     </p>
                                 </section>
 
                                 <section>
                                     <h3 className="text-sm font-bold flex items-center gap-2 mb-2">
-                                        <Activity size={14} className="text-blue-500" /> Monitoring Dashboard
+                                        <Activity size={14} className="text-red-500" /> Diagnostics & Health Score
                                     </h3>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        Integrated with **Prometheus and Grafana**, SqlForge provides real-time metrics for your database clusters, 
-                                        including CPU usage, memory, and query performance.
+                                        Monitor real-time performance and run **Health Audits**. Detect **Index Bloat**, 
+                                        **Connection Exhaustion**, and **Long-Running Transactions** with a single click in the Monitoring Dashboard.
                                     </p>
                                 </section>
 

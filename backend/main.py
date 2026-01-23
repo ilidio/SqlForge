@@ -14,7 +14,11 @@ from pro import sync as pro_sync
 from pro import transfer as pro_transfer
 from pro import index_advisor
 from pro import what_if
+from pro import refactorer
+from pro import generator
 from monitor import locks
+from monitor.health import HealthAuditor
+from monitor.manager import MonitorManager
 from pro import benchmark
 
 app = FastAPI(title="SqlForge API")
@@ -301,6 +305,40 @@ def analyze_query_performance(request: AIRequest):
     )
     return result
 
+@app.post("/pro/refactorer/refactor")
+def refactor_sql_endpoint(request: AIRequest):
+    config = internal_db.get_connection(request.connection_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    result = refactorer.refactor_sql(
+        config, 
+        request.prompt, 
+        request.api_key, 
+        request.model
+    )
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result
+
+@app.post("/pro/generator/hydrate")
+def hydrate_table_endpoint(request: Dict[str, Any]):
+    # request: { connection_id, table_name, count, api_key, model }
+    conn_id = request.get("connection_id")
+    table_name = request.get("table_name")
+    count = int(request.get("count", 100))
+    api_key = request.get("api_key")
+    model = request.get("model")
+    
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+        
+    result = generator.hydrate_table(config, table_name, count, api_key, model)
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result
+
 @app.post("/pro/what-if/analyze")
 def run_what_if_analysis(request: Dict[str, Any]):
     # request: { connection_id, sql, index_ddl }
@@ -320,6 +358,20 @@ def get_locks(conn_id: str):
     if not config:
         raise HTTPException(status_code=404, detail="Connection not found")
     return locks.get_lock_tree(config)
+
+@app.get("/monitor/health/{conn_id}")
+def get_health_audit(conn_id: str):
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return HealthAuditor.get_health_score(config)
+
+@app.get("/monitor/processes/{conn_id}")
+async def get_active_processes_endpoint(conn_id: str):
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return await MonitorManager.get_active_processes(config)
 
 @app.post("/monitor/kill")
 def kill_session_endpoint(request: Dict[str, str]):
@@ -394,13 +446,13 @@ async def import_table_data(
     return result
 
 @app.get("/connections/{conn_id}/export/{table_name}")
-def export_table_data(conn_id: str, table_name: str, format: str = "csv"):
+def export_table_data(conn_id: str, table_name: str, format: str = "csv", masked: bool = False):
     config = internal_db.get_connection(conn_id)
     if not config:
         raise HTTPException(status_code=404, detail="Connection not found")
     
     try:
-        gen = database.stream_export_data(config, table_name, format)
+        gen = database.stream_export_data(config, table_name, format, mask_pii=masked)
         
         media_types = {
             "csv": "text/csv",

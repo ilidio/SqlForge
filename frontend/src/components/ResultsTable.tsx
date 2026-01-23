@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -17,13 +17,18 @@ interface Props {
   } | null;
   onRefresh?: () => void;
   onSelectKey?: (key: string) => void;
+  onSort?: (column: string, direction: 'ASC' | 'DESC' | null) => void;
+  onPageSizeChange?: (size: number) => void;
+  sortColumn?: string | null;
+  sortDirection?: 'ASC' | 'DESC' | null;
+  pageSize?: number;
 }
 
 export interface ResultsTableHandle {
     focus: () => void;
 }
 
-export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, dbType, data, onRefresh, onSelectKey }, ref) => {
+export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, dbType, data, onRefresh, onSelectKey, onSort, onPageSizeChange, sortColumn, sortDirection, pageSize = 100 }, ref) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [editingCell, setEditingCell] = useState<{rowIndex: number, column: string} | null>(null);
   const [changes, setChanges] = useState<Record<string, unknown>>({}); 
@@ -119,6 +124,16 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
     }
   };
 
+  const handleSort = (col: string) => {
+    if (!onSort) return;
+    let nextDir: 'ASC' | 'DESC' | null = 'ASC';
+    if (sortColumn === col) {
+        if (sortDirection === 'ASC') nextDir = 'DESC';
+        else if (sortDirection === 'DESC') nextDir = null;
+    }
+    onSort(col, nextDir);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') saveEdit();
     if (e.key === 'Escape') setEditingCell(null);
@@ -180,8 +195,30 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
             <tr className="border-b border-border">
               <th className="p-2.5 w-10 text-center text-muted-foreground select-none font-medium border-r border-border/50">#</th>
               {data.columns.map(col => (
-                <th key={col} className="p-2.5 font-bold text-foreground select-none border-r border-border/50 bg-muted/30">
-                  <div className="flex items-center gap-2"><Layers size={10} className="text-primary/70" />{col}</div>
+                <th 
+                    key={col} 
+                    className={cn(
+                        "p-2.5 font-bold text-foreground select-none border-r border-border/50 bg-muted/30 transition-colors",
+                        onSort && "cursor-pointer hover:bg-muted/50"
+                    )}
+                    onClick={() => handleSort(col)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Layers size={10} className={cn("text-primary/70", sortColumn === col && "text-primary")} />
+                        {col}
+                      </div>
+                      {onSort && sortColumn === col && (
+                          <div className="text-primary animate-in fade-in zoom-in duration-200">
+                              {sortDirection === 'ASC' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                          </div>
+                      )}
+                      {onSort && sortColumn !== col && (
+                          <div className="text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors">
+                              <ArrowUp size={10} />
+                          </div>
+                      )}
+                  </div>
                 </th>
               ))}
             </tr>
@@ -250,11 +287,26 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
         </table>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-      <div className="bg-muted/50 border-t border-border text-muted-foreground text-[10px] px-3 py-1.5 flex justify-between items-center font-medium">
-          <div className="flex items-center gap-3">
-              <span>{data.rows.length} rows retrieved</span>
-              <span className="opacity-30">|</span>
-              <span>{data.columns.length} columns</span>
+      <div className="bg-muted/50 border-t border-border text-muted-foreground text-[10px] px-3 py-1 flex justify-between items-center font-medium h-9">
+          <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-foreground/70">{data.rows.length}</span> rows
+                  <span className="opacity-30">|</span>
+                  <span className="font-bold text-foreground/70">{data.columns.length}</span> columns
+              </div>
+              <div className="flex items-center gap-2 border-l border-border/50 pl-4">
+                  <span className="text-[9px] uppercase tracking-wider font-bold opacity-60">Page Size:</span>
+                  <input 
+                    type="number" 
+                    className="w-12 h-6 bg-background border rounded px-1.5 text-xs text-foreground font-bold focus:ring-1 focus:ring-primary outline-none"
+                    value={pageSize}
+                    onChange={(e) => onPageSizeChange?.(parseInt(e.target.value) || 0)}
+                    onKeyDown={(e) => e.key === 'Enter' && onRefresh?.()}
+                  />
+                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 hover:bg-background" onClick={onRefresh} title="Refresh with new page size">
+                      <RotateCcw size={10} />
+                  </Button>
+              </div>
           </div>
           <div className="flex items-center gap-1 opacity-60"><CheckCircle size={10} className="text-emerald-500" />Query successful</div>
       </div>

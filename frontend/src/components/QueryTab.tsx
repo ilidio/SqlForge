@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { IndexAdvisor } from './IndexAdvisor';
 import { VisualExplain } from './VisualExplain';
 import { BenchmarkDialog } from './BenchmarkDialog';
-import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2 } from 'lucide-react';
+import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, Wand2 } from 'lucide-react';
 import Editor, { useMonaco } from '@monaco-editor/react';
 
 interface Props {
@@ -43,6 +43,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   const [apiKey, setApiKey] = useState('');
   const [aiModel, setAiModel] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [refactorLoading, setRefactorLoading] = useState(false);
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [showBenchmark, setShowBenchmark] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'explain'>('grid');
@@ -216,6 +217,31 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     }
   };
 
+  const refactorSQL = async () => {
+    if (!apiKey || !aiModel) {
+      toast.warning("Please configure both Gemini API Key and AI Model in Settings first.");
+      return;
+    }
+    if (!sql.trim()) {
+      toast.warning("Please enter some SQL to refactor.");
+      return;
+    }
+    setRefactorLoading(true);
+    try {
+      const res = await api.refactorSQL(connectionId, sql, apiKey, aiModel);
+      setSql(res.refactored_sql);
+      toast.success("SQL Refactored!", {
+          description: res.explanation,
+          duration: 5000
+      });
+    } catch (e: unknown) {
+      const message = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (e as Error).message || String(e);
+      toast.error("Refactoring Error: " + message);
+    } finally {
+      setRefactorLoading(false);
+    }
+  };
+
   const exportCSV = () => {
     if (!result || !result.rows || result.rows.length === 0) return;
     
@@ -371,6 +397,21 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                 {(!apiKey || !aiModel) && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" title="AI not configured" />}
               </Button>
             )}
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={refactorSQL}
+              disabled={refactorLoading}
+              className={cn(
+                  "h-7 text-xs gap-1.5",
+                  (!apiKey || !aiModel) ? "text-amber-500 hover:text-amber-600 hover:bg-amber-500/10" : "text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
+              )}
+              title="AI SQL Refactor (Clean Code, SARGability, N+1)"
+            >
+              {refactorLoading ? <span className="animate-spin text-xs">⏳</span> : <Wand2 size={12} />}
+              Refactor
+              {(!apiKey || !aiModel) && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" title="AI not configured" />}
+            </Button>
           </div>
           <div className="flex gap-2 mr-1 items-center">
              {result && result.rows && result.rows.length > 0 && (

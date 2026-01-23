@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, type ConnectionConfig } from '../api';
-import { Database, Table, Plus, RefreshCw, History, Clock, ChevronRight, ChevronDown, Layers, FileText, Key, Box, Search, Settings, Zap, Cpu, Terminal, Wand2, Activity } from 'lucide-react';
+import { Database, Table, Plus, RefreshCw, History, Clock, ChevronRight, ChevronDown, Layers, FileText, Key, Box, Search, Settings, Zap, Cpu, Terminal, Wand2, Activity, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -29,6 +29,7 @@ interface Props {
   onDisconnect?: (connId: string) => void;
   onExportTable: (connId: string, tableName: string) => void;
   onImportTable: (connId: string, tableName: string) => void;
+  onHydrateTable: (connId: string, tableName: string) => void;
   onDropObject: (connId: string, name: string, type: string) => void;
   onOpenSettings: () => void;
     onSelectConnection?: (connId: string) => void;
@@ -64,6 +65,7 @@ export const Sidebar: React.FC<Props> = ({
     onDisconnect,
     onExportTable,
     onImportTable,
+    onHydrateTable,
     onDropObject,
     onOpenSettings, 
     onSelectConnection, 
@@ -387,6 +389,11 @@ export const Sidebar: React.FC<Props> = ({
                                                                             <ContextMenuItem onClick={() => onSelectTable(conn.id!, t.name)} className="gap-2 font-bold">
                                                                                 <DbIcon size={14} /> View Data
                                                                             </ContextMenuItem>
+                                                                            {t.type === 'table' && (
+                                                                                <ContextMenuItem onClick={() => onHydrateTable(conn.id!, t.name)} className="gap-2 text-indigo-600 focus:text-indigo-600 font-medium">
+                                                                                    <Sparkles size={14} /> Hydrate with AI Data...
+                                                                                </ContextMenuItem>
+                                                                            )}
                                                                             <ContextMenuItem onClick={() => onOpenSchema(conn.id!, t.name)} className="gap-2">
                                                                                 <Layout size={14} /> Design Table
                                                                             </ContextMenuItem>

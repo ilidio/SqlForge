@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, FileJson, FileCode, CheckCircle2, ChevronRight, Settings2, Database } from 'lucide-react';
+import { Download, FileSpreadsheet, FileJson, FileCode, CheckCircle2, ChevronRight, Settings2, Database, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '../api';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface ExportWizardProps {
     open: boolean;
@@ -16,6 +18,7 @@ interface ExportWizardProps {
 export default function ExportWizard({ open, onOpenChange, connectionId, tableName }: ExportWizardProps) {
     const [step, setStep] = useState(1);
     const [format, setFormat] = useState<'csv' | 'json' | 'sql'>('csv');
+    const [masked, setMasked] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState('');
@@ -25,6 +28,7 @@ export default function ExportWizard({ open, onOpenChange, connectionId, tableNa
             setStep(1);
             setProgress(0);
             setStatus('');
+            setMasked(false);
         }
     }, [open]);
 
@@ -43,7 +47,7 @@ export default function ExportWizard({ open, onOpenChange, connectionId, tableNa
         setProgress(30);
         
         try {
-            const url = api.getExportUrl(connectionId, tableName, format);
+            const url = api.getExportUrl(connectionId, tableName, format, masked);
             
             // Trigger download by creating a hidden link
             const link = document.createElement('a');
@@ -117,6 +121,38 @@ export default function ExportWizard({ open, onOpenChange, connectionId, tableNa
 
                     {step === 2 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                            <div 
+                                className={cn(
+                                    "p-6 rounded-xl border transition-all duration-300 mb-6 flex items-center justify-between group",
+                                    masked ? "bg-indigo-500/10 border-indigo-500/50 shadow-inner" : "bg-muted/5 border-border hover:border-indigo-500/30"
+                                )}
+                                onClick={() => setMasked(!masked)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                                        masked ? "bg-indigo-500 text-white shadow-lg" : "bg-muted text-muted-foreground group-hover:bg-indigo-100 group-hover:text-indigo-600"
+                                    )}>
+                                        <ShieldCheck size={24} />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-bold flex items-center gap-2">
+                                            Data Privacy Mode
+                                            {masked && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded uppercase">Active</span>}
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground max-w-[280px]">
+                                            Automatically masks PII (emails, phones, names) using one-way hashing during export. Recommended for production data.
+                                        </div>
+                                    </div>
+                                </div>
+                                <Checkbox 
+                                    checked={masked} 
+                                    onCheckedChange={(c) => setMasked(!!c)}
+                                    className="w-5 h-5 border-indigo-500 data-[state=checked]:bg-indigo-500"
+                                />
+                            </div>
+
                             <div className="p-6 rounded-xl border bg-muted/5 space-y-6">
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
