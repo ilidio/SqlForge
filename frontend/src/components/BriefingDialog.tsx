@@ -1,10 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { api, SessionSummary } from '../api';
-import { Sparkles, Calendar, Coffee, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { api, type SessionSummary } from '../api';
+import { Sparkles, Calendar, Coffee } from 'lucide-react';
+
+const formatLongDate = (date: Date | string) => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(d);
+};
+
+const formatTime = (date: Date | string) => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(d);
+};
 
 interface BriefingDialogProps {
   open: boolean;
@@ -46,7 +65,7 @@ export function BriefingDialog({ open, onOpenChange }: BriefingDialogProps) {
             <div className="space-y-1">
               <DialogTitle className="text-2xl font-light tracking-tight">Daily Briefing</DialogTitle>
               <DialogDescription className="text-base font-medium text-foreground/80">
-                {summary?.date ? format(new Date(summary.date), 'EEEE, MMMM do, yyyy') : 'Loading...'}
+                {summary?.date ? formatLongDate(summary.date) : 'Loading...'}
               </DialogDescription>
             </div>
           </div>
@@ -86,7 +105,7 @@ export function BriefingDialog({ open, onOpenChange }: BriefingDialogProps) {
                         <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-muted-foreground/30 ring-4 ring-background group-hover:bg-primary transition-colors" />
                         <div className="flex flex-col gap-1">
                           <span className="text-[10px] font-mono text-muted-foreground">
-                            {format(new Date(item.dateTime), 'h:mm a')}
+                            {formatTime(item.dateTime)}
                           </span>
                           <p className="text-sm text-foreground/80 group-hover:text-foreground transition-colors">
                             {item.content}
