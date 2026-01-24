@@ -18,8 +18,9 @@ import BackupWizard from './components/BackupWizard';
 import ExportWizard from './components/ExportWizard';
 import ImportWizard from './components/ImportWizard';
 import HydrateWizard from './components/HydrateWizard';
-import { AutomationDashboard } from './components/AutomationDashboard';
 import MonitorDashboard from './components/MonitorDashboard';
+import { AutomationDashboard } from './components/AutomationDashboard';
+import { BriefingDialog } from './components/BriefingDialog';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { api, type ConnectionConfig } from './api';
 import { useTheme } from './lib/ThemeContext';
@@ -63,8 +64,9 @@ function App() {
   const [importTarget, setImportTarget] = useState<{connId: string, tableName: string} | null>(null);
   const [isHydrateOpen, setIsHydrateOpen] = useState(false);
   const [hydrateTarget, setHydrateTarget] = useState<{connId: string, tableName: string} | null>(null);
-  const [isAutomationOpen, setIsAutomationOpen] = useState(false);
   const [isMonitorOpen, setIsMonitorOpen] = useState(false);
+  const [isAutomationOpen, setIsAutomationOpen] = useState(false);
+  const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [helpTab, setHelpTab] = useState('shortcuts');
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
@@ -587,6 +589,7 @@ function App() {
           if (action === 'restore') { setBackupMode('restore'); setIsBackupOpen(true); }
           if (action === 'monitor') setIsMonitorOpen(true);
           if (action === 'automation') setIsAutomationOpen(true);
+          if (action === 'open_briefing') setIsBriefingOpen(true);
           if (action === 'refresh') setRefreshTrigger(prev => prev + 1);
       }} />
       <div className="flex-1 flex overflow-hidden">
@@ -854,6 +857,11 @@ function App() {
       <AutomationDashboard 
         open={isAutomationOpen} 
         onOpenChange={setIsAutomationOpen} 
+      />
+
+      <BriefingDialog 
+        open={isBriefingOpen} 
+        onOpenChange={setIsBriefingOpen} 
       />
 
       <ConfirmDialog 

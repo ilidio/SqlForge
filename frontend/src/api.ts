@@ -77,6 +77,19 @@ export interface TaskHistory {
   duration_ms: number;
 }
 
+export interface DailyTimeline {
+  id: string;
+  dateTime: string;
+  content: string;
+  noteIds: number[];
+}
+
+export interface SessionSummary {
+  date: string;
+  summary: string;
+  timelines: DailyTimeline[];
+}
+
 export const api = {
   getConnections: () => axios.get<ConnectionConfig[]>(`${API_URL}/connections`).then(r => r.data),
   saveConnection: (config: ConnectionConfig) => axios.post<ConnectionConfig>(`${API_URL}/connections`, config).then(r => r.data),
@@ -107,6 +120,7 @@ export const api = {
   runBatchQueries: (connId: string, operations: any[]) => axios.post<{results: {success: boolean, error: string | null}[]}>(`${API_URL}/query/batch`, { connection_id: connId, operations: operations }).then(r => r.data),
   getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),
   generateSQL: (connId: string, prompt: string, apiKey: string, model: string) => axios.post<{sql: string}>(`${API_URL}/ai/generate`, { connection_id: connId, prompt, api_key: apiKey, model }).then(r => r.data),
+  getDailyBriefing: (apiKey?: string) => axios.get<SessionSummary>(`${API_URL}/ai/briefing`, { params: { api_key: apiKey } }).then(r => r.data),
   refactorSQL: (connId: string, sql: string, apiKey: string, model: string) => axios.post<{refactored_sql: string, explanation: string, changes: any[]}>(`${API_URL}/pro/refactorer/refactor`, { connection_id: connId, prompt: sql, api_key: apiKey, model }).then(r => r.data),
   hydrateTable: (connId: string, tableName: string, count: number, apiKey: string, model: string) => axios.post<{success: boolean, count: number}>(`${API_URL}/pro/generator/hydrate`, { connection_id: connId, table_name: tableName, count, api_key: apiKey, model }).then(r => r.data),
   analyzeQuery: (connId: string, sql: string, apiKey: string, model: string) => axios.post<any>(`${API_URL}/pro/index-advisor/analyze`, { connection_id: connId, prompt: sql, api_key: apiKey, model }).then(r => r.data),

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Logo } from './ui/Logo';
 import { 
-  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X, Trash2, RefreshCw, Clock 
+  Database, Settings, Plus, Save, Zap, Cpu, HelpCircle, Terminal, Sparkles, Edit2, X, Trash2, RefreshCw, Clock, Coffee
 } from 'lucide-react';
 interface MenuItem {
     label?: string;
@@ -74,6 +74,7 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
                 { label: 'Structure Synchronization...', onClick: () => onAction?.('struct_sync'), disabled: !hasConnections },
                 { divider: true },
                 { label: 'Automation & Scheduling...', icon: <Clock size={14}/>, onClick: () => onAction?.('automation') },
+                { label: 'Daily Briefing', icon: <Coffee size={14} className="text-orange-400"/>, onClick: () => onAction?.('open_briefing') },
                 { divider: true },
                 { label: 'Backup...', icon: <Save size={14}/>, onClick: () => onAction?.('backup'), disabled: !hasConnections },
                 { label: 'Restore...', onClick: () => onAction?.('restore'), disabled: !hasConnections },

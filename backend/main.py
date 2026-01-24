@@ -17,6 +17,7 @@ from pro import what_if
 from pro import refactorer
 from pro import generator
 from pro import scheduler
+from pro import briefing
 from monitor import locks
 from monitor.health import HealthAuditor
 from monitor.manager import MonitorManager
@@ -40,6 +41,11 @@ def startup_event():
 @app.get("/")
 def read_root():
     return {"status": "ok", "app": "SqlForge"}
+
+@app.get("/ai/briefing", response_model=briefing.SessionSummary)
+def get_daily_briefing(api_key: str = None, model: str = "gemini-1.5-flash"):
+    # Allow passing key via query param for simplicity in frontend
+    return briefing.generate_daily_briefing(api_key, model)
 
 # --- Automation / Scheduling Endpoints ---
 

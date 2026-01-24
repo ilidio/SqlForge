@@ -94,6 +94,24 @@ def get_history() -> List[Dict[str, Any]]:
         for r in rows
     ]
 
+def get_query_history_by_range(start: datetime, end: datetime) -> List[Dict[str, Any]]:
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, connection_id, sql, timestamp, duration_ms, status FROM query_history WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp ASC", (start, end))
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {
+            "id": r[0],
+            "connection_id": r[1],
+            "sql": r[2],
+            "timestamp": r[3],
+            "duration_ms": r[4],
+            "status": r[5]
+        }
+        for r in rows
+    ]
+
 # --- Task Scheduling ---
 
 def save_scheduled_task(task: Dict[str, Any]):
@@ -175,6 +193,24 @@ def get_task_history(task_id: str = None) -> List[Dict[str, Any]]:
     else:
         c.execute("SELECT id, task_id, timestamp, status, result, duration_ms FROM task_history ORDER BY id DESC LIMIT 100")
     
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {
+            "id": r[0],
+            "task_id": r[1],
+            "timestamp": r[2],
+            "status": r[3],
+            "result": json.loads(r[4]),
+            "duration_ms": r[5]
+        }
+        for r in rows
+    ]
+
+def get_task_history_by_range(start: datetime, end: datetime) -> List[Dict[str, Any]]:
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, task_id, timestamp, status, result, duration_ms FROM task_history WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp ASC", (start, end))
     rows = c.fetchall()
     conn.close()
     return [
