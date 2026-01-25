@@ -99,7 +99,7 @@ test('ExportWizard triggers download stream', async () => {
     fireEvent.click(screen.getByText(/Next: Configure/i));
     fireEvent.click(screen.getByText(/Start Export/i));
     
-    expect(api.getExportUrl).toHaveBeenCalledWith('1', 'users', 'csv');
+    expect(api.getExportUrl).toHaveBeenCalledWith('1', 'users', 'csv', false);
     expect(screen.getByText(/Export stream started/i)).toBeInTheDocument();
 });
 

@@ -379,6 +379,10 @@ function App() {
     }
   };
 
+  const handleSqlChange = (tabId: string, sql: string) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, content: sql } : t));
+  };
+
   const closeTab = (id: string, e?: React.MouseEvent | { stopPropagation: () => void }) => {
     e?.stopPropagation();
     const newTabs = tabs.filter(t => t.id !== id);
@@ -681,6 +685,7 @@ function App() {
                     ref={activeQueryTabRef}
                     connectionId={activeTab.connectionId} 
                     initialSql={activeTab.content} 
+                    onSqlChange={(sql) => handleSqlChange(activeTab.id, sql)}
                   />
                 )}
                 {activeTab.type === 'table' && (

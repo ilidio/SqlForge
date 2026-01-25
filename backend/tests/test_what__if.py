@@ -34,4 +34,4 @@ def test_evaluate_virtual_index_pg_success(mock_get_engine):
 def test_evaluate_virtual_index_unsupported_dialect():
     config = ConnectionConfig(name="test", type="mysql", database="db")
     res = evaluate_virtual_index(config, "SELECT 1", "CREATE INDEX")
-    assert "supported for PostgreSQL only" in res['error']
+    assert "Virtual indexes not currently supported" in res['error']

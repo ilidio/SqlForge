@@ -11,12 +11,13 @@ import { cn } from '@/lib/utils';
 import { IndexAdvisor } from './IndexAdvisor';
 import { VisualExplain } from './VisualExplain';
 import { BenchmarkDialog } from './BenchmarkDialog';
-import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, Wand2 } from 'lucide-react';
+import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, Wand2, History, Clock } from 'lucide-react';
 import Editor, { useMonaco } from '@monaco-editor/react';
 
 interface Props {
   connectionId: string;
   initialSql?: string;
+  onSqlChange?: (sql: string) => void;
 }
 
 export interface QueryTabHandle {
@@ -30,12 +31,14 @@ export interface QueryTabHandle {
   saveQuery: () => void;
 }
 
-export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '' }, ref) => {
+export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '', onSqlChange }, ref) => {
   const [sql, setSql] = useState(initialSql);
   const resultsTableRef = useRef<ResultsTableHandle>(null);
   const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
   const [loading, setLoading] = useState(false);
   const [withAnalyze, setWithAnalyze] = useState(false);
+  const [history, setHistory] = useState<{sql: string, timestamp: number}[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   
   // AI State
   const [showAi, setShowAi] = useState(false);
@@ -59,7 +62,29 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     const savedModel = localStorage.getItem('ai_model');
     if (savedKey) setApiKey(savedKey);
     if (savedModel) setAiModel(savedModel);
-  }, []);
+
+    // Load history
+    const savedHistory = localStorage.getItem(`query_history_${connectionId}`);
+    if (savedHistory) {
+        try {
+            setHistory(JSON.parse(savedHistory));
+        } catch (e) {
+            console.error("Failed to parse history", e);
+        }
+    }
+  }, [connectionId]);
+
+  const saveToHistory = (querySql: string) => {
+    if (!querySql.trim()) return;
+    const newEntry = { sql: querySql, timestamp: Date.now() };
+    
+    // Check if last entry is the same
+    if (history.length > 0 && history[0].sql === querySql) return;
+
+    const newHistory = [newEntry, ...history.slice(0, 49)]; // Keep last 50
+    setHistory(newHistory);
+    localStorage.setItem(`query_history_${connectionId}`, JSON.stringify(newHistory));
+  };
 
   const saveApiKey = (key: string) => {
     setApiKey(key);
@@ -117,6 +142,9 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     try {
       const res = await api.runQuery(connectionId, sql);
       setResult(res);
+      if (!res.error) {
+          saveToHistory(sql);
+      }
     } catch (e: unknown) {
       setResult({ columns: [], rows: [], error: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -441,6 +469,62 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
              
              <div className="h-4 w-px bg-border mx-1" />
 
+             <Popover open={showHistory} onOpenChange={setShowHistory}>
+                <PopoverTrigger asChild>
+                    <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                        title="Query History"
+                    >
+                        <History size={13} />
+                        History
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="end">
+                    <div className="p-3 border-b border-border font-semibold text-sm flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-primary" />
+                            Local Query History
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => {
+                            setHistory([]);
+                            localStorage.removeItem(`query_history_${connectionId}`);
+                        }}>
+                            Clear All
+                        </Button>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                        {history.length === 0 ? (
+                            <div className="p-8 text-center text-xs text-muted-foreground">
+                                No history yet. Execute some queries!
+                            </div>
+                        ) : (
+                            history.map((entry, idx) => (
+                                <div 
+                                    key={idx} 
+                                    className="p-3 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer group"
+                                    onClick={() => {
+                                        setSql(entry.sql);
+                                        setShowHistory(false);
+                                    }}
+                                >
+                                    <div className="text-[10px] text-muted-foreground mb-1 flex justify-between">
+                                        {new Date(entry.timestamp).toLocaleString()}
+                                        <span className="opacity-0 group-hover:opacity-100 text-primary font-medium transition-opacity">Restore</span>
+                                    </div>
+                                    <code className="text-[11px] block truncate font-mono bg-muted/30 p-1 rounded border border-border/50">
+                                        {entry.sql}
+                                    </code>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </PopoverContent>
+             </Popover>
+
+             <div className="h-4 w-px bg-border mx-1" />
+
              <Button 
                 size="sm"
                 variant="ghost"
@@ -504,7 +588,11 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                 height="100%"
                 defaultLanguage="sql"
                 value={sql}
-                onChange={(value) => setSql(value || '')}
+                onChange={(value) => {
+                    const newSql = value || '';
+                    setSql(newSql);
+                    onSqlChange?.(newSql);
+                }}
                 theme="vs-dark" // We can toggle this based on app theme if needed
                 onMount={handleEditorDidMount}
                 options={{

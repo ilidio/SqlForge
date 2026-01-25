@@ -857,7 +857,7 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
     except Exception as e:
         return {"success": False, "error": f"Database error: {str(e)}"}
 
-def stream_export_data(config: ConnectionConfig, table_name: str, file_format: str, mask_pii: bool = False):
+def stream_export_data(config: ConnectionConfig, table_name: str, file_format: str, mask_pii: bool = False, where_clause: str = None):
     if config.type == 'redis':
         def generate_redis():
             host = config.host
@@ -902,7 +902,19 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
 
             client = MongoClient(f"mongodb://{config.username}:{config.password}@{host}:{port}/" if config.username else f"mongodb://{host}:{port}/")
             db = client[config.database]
-            cursor = db[table_name].find({})
+            
+            # Simple query for mongo
+            mongo_query = {}
+            if where_clause:
+                # Basic heuristic: if it looks like JSON, parse it
+                try:
+                    mongo_query = json.loads(where_clause)
+                except:
+                    pass
+
+            cursor = db[table_name].find(mongo_query)
+            
+            # ...
             
             # Pre-detect PII if masking is on
             mask_map = {}
@@ -943,7 +955,11 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
     def generate():
         with engine.connect() as conn:
             # For massive tables, we should use stream_results=True if supported by dialect
-            result = conn.execution_options(stream_results=True).execute(text(f"SELECT * FROM {table_name}"))
+            query = f"SELECT * FROM {table_name}"
+            if where_clause:
+                query += f" WHERE {where_clause}"
+            
+            result = conn.execution_options(stream_results=True).execute(text(query))
             columns = list(result.keys())
             
             mask_map = {}

@@ -18,7 +18,19 @@ def mysql_config():
         host="localhost", port=3306, username="admin", password="password", database="testdb"
     )
 
+def is_db_reachable(config):
+    try:
+        engine = get_engine(config)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except:
+        return False
+
 def test_cross_db_sync_pg_to_mysql(pg_config, mysql_config):
+    if not is_db_reachable(pg_config) or not is_db_reachable(mysql_config):
+        pytest.skip("Postgres or MySQL not reachable. Skipping cross-db sync test.")
+        
     # 1. Setup: Create table in Postgres, ensure NOT in MySQL
     pg_engine = get_engine(pg_config)
     mysql_engine = get_engine(mysql_config)

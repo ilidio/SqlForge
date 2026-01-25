@@ -16,6 +16,7 @@ export default function BackupWizard({ open, onOpenChange, mode }: BackupWizardP
     const [connections, setConnections] = useState<ConnectionConfig[]>([]);
     const [selectedConnId, setSelectedConnId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isIncremental, setIsIncremental] = useState(false);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState('');
 
@@ -126,6 +127,18 @@ export default function BackupWizard({ open, onOpenChange, mode }: BackupWizardP
                                         <div className="flex items-center justify-between text-xs p-2 rounded bg-background border">
                                             <span>Include Data</span>
                                             <div className="w-8 h-4 bg-primary rounded-full relative"><div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"/></div>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs p-2 rounded bg-background border">
+                                            <div className="flex flex-col">
+                                                <span>Incremental</span>
+                                                <span className="text-[8px] text-muted-foreground">Changes only</span>
+                                            </div>
+                                            <div 
+                                                className={cn("w-8 h-4 rounded-full relative cursor-pointer transition-colors", isIncremental ? "bg-primary" : "bg-muted")}
+                                                onClick={() => setIsIncremental(!isIncremental)}
+                                            >
+                                                <div className={cn("absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all", isIncremental ? "right-0.5" : "left-0.5")}/>
+                                            </div>
                                         </div>
                                         <div className="flex items-center justify-between text-xs p-2 rounded bg-background border">
                                             <span>Compress (GZIP)</span>

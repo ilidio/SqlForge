@@ -9,8 +9,8 @@ def test_get_lock_tree_postgresql(mock_get_engine):
     
     # Mock data showing PID 100 blocking PID 200
     mock_result = [
-        {'pid': 100, 'usename': 'admin', 'query': 'UPDATE t1 SET x=1', 'state': 'active', 'wait_event': None, 'duration': '0:01:00', 'blocking_pids': []},
-        {'pid': 200, 'usename': 'user1', 'query': 'SELECT * FROM t1', 'state': 'active', 'wait_event': 'Lock', 'duration': '0:00:30', 'blocking_pids': [100]}
+        {'pid': 100, 'usename': 'admin', 'query': 'UPDATE t1 SET x=1', 'state': 'active', 'wait_event': None, 'duration': '0:01:00', 'blocking_pids': [], 'locked_tables': 't1'},
+        {'pid': 200, 'usename': 'user1', 'query': 'SELECT * FROM t1', 'state': 'active', 'wait_event': 'Lock', 'duration': '0:00:30', 'blocking_pids': [100], 'locked_tables': 't1'}
     ]
     
     # Setup mock iterator for sqlalchemy result
