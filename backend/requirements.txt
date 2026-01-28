@@ -7,7 +7,7 @@ typing-extensions
 python-multipart
 pytest
 httpx
-google-genai-sdk
+google-genai
 psycopg2-binary
 pymysql
 pymssql

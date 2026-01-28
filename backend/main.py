@@ -432,6 +432,26 @@ def kill_session_endpoint(request: Dict[str, str]):
         raise HTTPException(status_code=404, detail="Connection not found")
     return locks.kill_session(config, pid)
 
+@app.post("/pro/sync/visual-diff")
+def visual_schema_diff(request: Dict[str, Any]):
+    # request: { connection_id: str, schema: List[TableSchema] }
+    conn_id = request.get("connection_id")
+    schema_data = request.get("schema", [])
+    
+    # Parse schema_data into TableSchema objects
+    from models import TableSchema, ColumnInfo
+    desired_schema = []
+    for table in schema_data:
+        cols = [ColumnInfo(**c) for c in table.get("columns", [])]
+        desired_schema.append(TableSchema(name=table["name"], columns=cols, foreign_keys=[]))
+        
+    target = internal_db.get_connection(conn_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Connection not found")
+        
+    result = pro_sync.diff_provided_schema_to_db(desired_schema, target)
+    return result
+
 @app.post("/pro/sync/diff")
 def schema_diff(request: SyncRequest):
     source = internal_db.get_connection(request.source_connection_id)

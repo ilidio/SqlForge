@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -133,8 +133,6 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 
   const layoutedNodes = nodes.map((node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
-    // We are shifting the dagre node position (anchor=center center) to the top left
-    // so it matches the React Flow node anchor point (top left).
     return {
       ...node,
       position: {
@@ -162,7 +160,12 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isDdlDialogOpen, setIsDdlDialogOpen] = useState(false);
   
+  const [generatedSql, setGeneratedSql] = useState('');
+  const [executionStatements, setExecutionStatements] = useState<string[]>([]);
+  const [isApplying, setIsApplying] = useState(false);
+
   const [editingTable, setEditingTable] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<any | null>(null);
   const [newTableName, setNewTableName] = useState('');
@@ -181,34 +184,6 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
     setColumnForm({ ...column });
     setIsColumnDialogOpen(true);
   }, []);
-
-  const saveColumn = () => {
-    if (!columnForm.name) {
-        toast.error("Column name is required");
-        return;
-    }
-
-    setNodes((nds) => nds.map((node) => {
-        if (node.id === editingTable) {
-            const columns = [...node.data.columns];
-            if (editingColumn) {
-                // Update existing
-                const idx = columns.findIndex(c => c.name === editingColumn.name);
-                if (idx !== -1) columns[idx] = columnForm;
-            } else {
-                // Add new
-                if (columns.some(c => c.name === columnForm.name)) {
-                    toast.error("Column already exists");
-                    return node;
-                }
-                columns.push(columnForm);
-            }
-            return { ...node, data: { ...node.data, columns } };
-        }
-        return node;
-    }));
-    setIsColumnDialogOpen(false);
-  };
 
   const onRemoveColumn = useCallback((tableName: string, colName: string) => {
       setNodes((nds) => nds.map((node) => {
@@ -230,19 +205,46 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
       setIsConfirmDeleteOpen(true);
   }, []);
 
-  const confirmDeleteTable = () => {
+  const saveColumn = () => {
+    if (!columnForm.name) {
+        toast.error("Column name is required");
+        return;
+    }
+
+    setNodes((nds) => nds.map((node) => {
+        if (node.id === editingTable) {
+            const columns = [...node.data.columns];
+            if (editingColumn) {
+                const idx = columns.findIndex(c => c.name === editingColumn.name);
+                if (idx !== -1) columns[idx] = columnForm;
+            } else {
+                if (columns.some(c => c.name === columnForm.name)) {
+                    toast.error("Column already exists");
+                    return node;
+                }
+                columns.push(columnForm);
+            }
+            return { ...node, data: { ...node.data, columns } };
+        }
+        return node;
+    }));
+    setIsColumnDialogOpen(false);
+  };
+
+  const confirmDeleteTable = useCallback(() => {
       if (!editingTable) return;
       setNodes((nds) => nds.filter((n) => n.id !== editingTable));
       setEdges((eds) => eds.filter((e) => e.source !== editingTable && e.target !== editingTable));
       setEditingTable(null);
-  };
+      setIsConfirmDeleteOpen(false);
+  }, [editingTable, setNodes, setEdges]);
 
   const onAddTable = useCallback(() => {
       setNewTableName('');
       setIsTableDialogOpen(true);
   }, []);
 
-  const confirmAddTable = () => {
+  const confirmAddTable = useCallback(() => {
       if (!newTableName) {
           toast.error("Table name is required");
           return;
@@ -264,7 +266,7 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
       };
       setNodes((nds) => [...nds, newNode]);
       setIsTableDialogOpen(false);
-  };
+  }, [isEditMode, onAddColumn, onEditColumn, onRemoveColumn, onDeleteTable, setNodes, newTableName]);
 
   const onConnect = useCallback((params: Connection) => {
       setEdges((eds) => addEdge({
@@ -275,13 +277,6 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
           markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' }
       }, eds));
   }, [setEdges]);
-
-  const saveModel = async () => {
-      toast.success("Design saved!", {
-          description: "Generating DDL migration script... (Prototype: Migration shown in Sync tab)"
-      });
-      setIsEditMode(false);
-  };
 
   const fetchAndLayout = useCallback(async () => {
     setLoading(true);
@@ -301,10 +296,8 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
             onRemoveColumn,
             onDelete: onDeleteTable
         },
-        position: { x: 0, y: 0 }, // Will be set by dagre
+        position: { x: 0, y: 0 },
       }));
-
-      // ... rest of fetchAndLayout
 
       const newEdges: Edge[] = [];
       schemas.forEach((schema) => {
@@ -337,19 +330,74 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [connectionId, setNodes, setEdges, isEditMode, onAddColumn, onRemoveColumn, onDeleteTable]);
+  }, [connectionId, setNodes, setEdges]); // Removed callbacks and isEditMode
 
   useEffect(() => {
     fetchAndLayout();
   }, [fetchAndLayout]);
 
-  // Update nodes when editMode changes
+  const callbacksRef = useRef({ onAddColumn, onEditColumn, onRemoveColumn, onDeleteTable });
+  useEffect(() => {
+    callbacksRef.current = { onAddColumn, onEditColumn, onRemoveColumn, onDeleteTable };
+  }, [onAddColumn, onEditColumn, onRemoveColumn, onDeleteTable]);
+
   useEffect(() => {
     setNodes((nds) => nds.map((node) => ({
         ...node,
-        data: { ...node.data, editMode: isEditMode }
+        data: { 
+            ...node.data, 
+            editMode: isEditMode,
+            onAddColumn: callbacksRef.current.onAddColumn,
+            onEditColumn: callbacksRef.current.onEditColumn,
+            onRemoveColumn: callbacksRef.current.onRemoveColumn,
+            onDelete: callbacksRef.current.onDeleteTable
+        }
     })));
-  }, [isEditMode, setNodes]);
+  }, [isEditMode, setNodes]); // Removed callbacks from dependencies
+
+  const saveModel = async () => {
+      try {
+          const currentSchema = nodes.map(n => ({
+              name: n.data.label,
+              columns: n.data.columns
+          }));
+          
+          const result = await api.visualDiff(connectionId, currentSchema);
+          setGeneratedSql(result.sql_text);
+          setExecutionStatements(result.statements);
+          setIsDdlDialogOpen(true);
+      } catch (e: any) {
+          toast.error("Failed to generate DDL: " + e.message);
+      }
+  };
+
+  const applyChanges = async () => {
+      setIsApplying(true);
+      try {
+          if (executionStatements.length === 0) {
+              toast.info("No changes to apply.");
+              setIsDdlDialogOpen(false);
+              return;
+          }
+
+          const results = await api.runBatchQueries(connectionId, executionStatements.map(s => ({
+              type: 'query',
+              table: '',
+              data: {},
+              where: {},
+              raw_sql: s
+          })));
+          
+          toast.success("Database schema updated!");
+          setIsDdlDialogOpen(false);
+          setIsEditMode(false);
+          fetchAndLayout();
+      } catch (e: any) {
+          toast.error("Failed to apply changes: " + e.message);
+      } finally {
+          setIsApplying(false);
+      }
+  };
 
   if (loading) {
     return (
@@ -495,6 +543,38 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
         confirmText="Delete"
         variant="destructive"
       />
+
+      {/* --- DDL Review Dialog --- */}
+      <Dialog open={isDdlDialogOpen} onOpenChange={setIsDdlDialogOpen}>
+          <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                      <Save size={18} className="text-primary" />
+                      Review Schema Changes
+                  </DialogTitle>
+                  <DialogDescription>
+                      The following SQL will be executed to synchronize your visual model with the database.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="bg-slate-950 p-4 rounded-md border border-slate-800 my-4">
+                  <pre className="text-[11px] font-mono text-blue-400 overflow-auto max-h-[300px]">
+                      {generatedSql || "-- No changes detected."}
+                  </pre>
+              </div>
+              <DialogFooter>
+                  <Button variant="ghost" size="sm" onClick={() => setIsDdlDialogOpen(false)}>Cancel</Button>
+                  <Button 
+                    size="sm" 
+                    className="bg-green-600 hover:bg-green-700" 
+                    onClick={applyChanges}
+                    disabled={isApplying || executionStatements.length === 0}
+                  >
+                      {isApplying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                      Apply Changes to Database
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

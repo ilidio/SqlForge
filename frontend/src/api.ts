@@ -132,6 +132,7 @@ export const api = {
   runBenchmark: (connId: string, sql: string, concurrency: number, duration: number) => axios.post<any>(`${API_URL}/query/benchmark`, { connection_id: connId, sql, concurrency, duration }).then(r => r.data),
   explainQuery: (connId: string, sql: string, analyze: boolean = false) => axios.post<{plan: any, dialect: string, error: string | null}>(`${API_URL}/query/explain`, { connection_id: connId, sql, analyze }).then(r => r.data),
   diffSchemas: (sourceId: string, targetId: string, mode: string = 'structure') => axios.post<{sql: string}>(`${API_URL}/pro/sync/diff`, { source_connection_id: sourceId, target_connection_id: targetId, mode }).then(r => r.data),
+  visualDiff: (connId: string, schema: any[]) => axios.post<{sql_text: string, statements: string[]}>(`${API_URL}/pro/sync/visual-diff`, { connection_id: connId, schema }).then(r => r.data),
   executeSync: (sourceId: string, targetId: string, mode: string = 'structure', dryRun: boolean = true) => axios.post<{status: string, message: string, sql?: string}>(`${API_URL}/pro/sync/execute`, { source_connection_id: sourceId, target_connection_id: targetId, mode, dry_run: dryRun }).then(r => r.data),
   
   // Automation
