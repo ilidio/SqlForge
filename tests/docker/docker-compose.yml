@@ -1,0 +1,112 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: sqlforge-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mysql:
+    image: mysql:latest
+    container_name: sqlforge-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  oracle:
+    image: gvenzl/oracle-free:latest
+    container_name: sqlforge-oracle
+    environment:
+      ORACLE_PASSWORD: password
+      APP_USER: admin
+      APP_USER_PASSWORD: password
+    ports:
+      - "1521:1521"
+    volumes:
+      - ./oracle/init.sql:/container-entrypoint-initdb.d/init.sql
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlforge-mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Password123!"
+    ports:
+      - "1433:1433"
+    # Note: MSSQL requires a custom entrypoint or manual run for init scripts, 
+    # but for simple testing SA login works.
+
+  mongodb:
+    image: mongo:latest
+    container_name: sqlforge-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: testdb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongodb/init.js:/docker-entrypoint-initdb.d/init.js:ro
+
+  redis:
+    image: redis:latest
+    container_name: sqlforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/init.redis:/data/init.redis
+    command: >
+      sh -c "redis-server --daemonize yes && 
+             sleep 2 && 
+             cat /data/init.redis | redis-cli --pipe && 
+             redis-cli save && 
+             redis-cli shutdown && 
+             redis-server"
+
+  # --- PRO MONITORING STACK ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sqlforge-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sqlforge-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: sqlforge-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://admin:password@postgres:5432/testdb?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: sqlforge-mysql-exporter
+    environment:
+      DATA_SOURCE_NAME: "admin:password@(mysql:3306)/"
+    ports:
+      - "9104:9104"
+    depends_on:
+      - mysql

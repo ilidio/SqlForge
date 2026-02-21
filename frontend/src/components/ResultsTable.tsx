@@ -1,0 +1,482 @@
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
+import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ClipboardPaste, CheckSquare, Square } from 'lucide-react';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { api } from '../api';
+import { Checkbox } from '@/components/ui/checkbox';
+
+interface Props {
+// ... existing props
+}
+
+export interface ResultsTableHandle {
+    focus: () => void;
+}
+
+export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionId, tableName, dbType, data, onRefresh, onSelectKey, onSort, onPageSizeChange, onPageChange, sortColumn, sortDirection, pageSize = 10, page = 1, totalRows = 0 }, ref) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [editingCell, setEditingCell] = useState<{rowIndex: number, column: string} | null>(null);
+  const [changes, setChanges] = useState<Record<string, unknown>>({}); 
+  const [deletedRows, setDeletedRows] = useState<Set<number>>(new Set());
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [hasClipboardData, setHasClipboardData] = useState(false);
+  const [editValue, setEditValue] = useState<string>('');
+  const [applying, setApplying] = useState(false);
+
+  useEffect(() => {
+    setChanges({});
+    setDeletedRows(new Set());
+    setSelectedRows(new Set());
+    setEditingCell(null);
+    setHasClipboardData(!!localStorage.getItem('sqlforge_clipboard'));
+  }, [data]);
+
+  const handleCopyRows = () => {
+      if (!data) return;
+      const rowsToCopy = Array.from(selectedRows).map(idx => data.rows[idx]);
+      if (rowsToCopy.length === 0) {
+          toast.warning("Please select rows to copy first.");
+          return;
+      }
+      localStorage.setItem('sqlforge_clipboard', JSON.stringify({
+          sourceTable: tableName,
+          data: rowsToCopy
+      }));
+      setHasClipboardData(true);
+      toast.success(`${rowsToCopy.length} rows copied to local buffer.`);
+  };
+
+  const handlePasteRows = async () => {
+      if (!connectionId || !tableName) {
+          toast.warning("Select a target table first.");
+          return;
+      }
+      const raw = localStorage.getItem('sqlforge_clipboard');
+      if (!raw) {
+          toast.warning("Clipboard is empty.");
+          return;
+      }
+      try {
+          const { data: buffer } = JSON.parse(raw);
+          setApplying(true);
+          const operations = buffer.map((row: any) => ({
+              type: 'insert',
+              table: tableName,
+              data: row
+          }));
+          
+          const res = await api.runBatchQueries(connectionId, operations);
+          const errors = res.results.filter((r: any) => !r.success);
+          if (errors.length > 0) {
+              toast.error(`Failed to paste some rows: ${errors[0].error}`);
+          } else {
+              toast.success(`Successfully pasted ${buffer.length} rows into ${tableName}!`);
+              onRefresh?.();
+          }
+      } catch (e: any) {
+          toast.error("Paste failed: " + e.message);
+      } finally {
+          setApplying(false);
+      }
+  };
+
+  const toggleSelectRow = (idx: number) => {
+      setSelectedRows(prev => {
+          const next = new Set(prev);
+          if (next.has(idx)) next.delete(idx);
+          else next.add(idx);
+          return next;
+      });
+  };
+
+  const toggleSelectAll = () => {
+      if (!data) return;
+      if (selectedRows.size === data.rows.length) {
+          setSelectedRows(new Set());
+      } else {
+          setSelectedRows(new Set(data.rows.map((_, i) => i)));
+      }
+  };
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+        // Focus the scroll area container
+        const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport instanceof HTMLElement) {
+            viewport.tabIndex = -1;
+            viewport.focus();
+        }
+    }
+  }));
+
+  const handleApplyChanges = async () => {
+    if (!connectionId || !tableName || !data) return;
+    setApplying(true);
+    
+    try {
+        const operations: any[] = [];
+        Array.from(deletedRows).forEach(rowIndex => {
+            const originalRow = data.rows[rowIndex];
+            operations.push({ type: 'delete', table: tableName, where: originalRow });
+        });
+
+        const rowIndices = new Set(Object.keys(changes).map(k => k.split('-')[0]));
+        for (const idxStr of Array.from(rowIndices)) {
+            const rowIndex = parseInt(idxStr);
+            if (deletedRows.has(rowIndex)) continue;
+            
+            const originalRow = data.rows[rowIndex];
+            const updates: Record<string, any> = {};
+            Object.keys(changes).forEach(key => {
+                const [r, col] = key.split('-');
+                if (parseInt(r) === rowIndex) {
+                    updates[col] = changes[key];
+                }
+            });
+
+            if (Object.keys(updates).length > 0) {
+                operations.push({ type: 'update', table: tableName, data: updates, where: originalRow });
+            }
+        }
+
+        if (operations.length > 0) {
+            const res = await api.runBatchQueries(connectionId, operations);
+            const errors = res.results.filter(r => !r.success);
+            if (errors.length > 0) {
+                toast.error(`Failed to apply changes: ${errors[0].error}`);
+            } else {
+                toast.success("Changes applied successfully!");
+                setChanges({});
+                setDeletedRows(new Set());
+                onRefresh?.();
+            }
+        }
+    } catch (e: any) {
+        toast.error(`Error: ${e.message}`);
+    } finally {
+        setApplying(false);
+    }
+  };
+
+  const toggleDeleteRow = (idx: number) => {
+      setDeletedRows(prev => {
+          const next = new Set(prev);
+          if (next.has(idx)) next.delete(idx);
+          else next.add(idx);
+          return next;
+      });
+  };
+
+  const startEditing = (rowIndex: number, column: string, value: unknown) => {
+    setEditingCell({ rowIndex, column });
+    setEditValue(String(value ?? ''));
+  };
+
+  const saveEdit = () => {
+    if (editingCell) {
+        const key = `${editingCell.rowIndex}-${editingCell.column}`;
+        setChanges(prev => ({ ...prev, [key]: editValue }));
+        setEditingCell(null);
+    }
+  };
+
+  const handleSort = (col: string) => {
+    if (!onSort) return;
+    let nextDir: 'ASC' | 'DESC' | null = 'ASC';
+    if (sortColumn === col) {
+        if (sortDirection === 'ASC') nextDir = 'DESC';
+        else if (sortDirection === 'DESC') nextDir = null;
+    }
+    onSort(col, nextDir);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') saveEdit();
+    if (e.key === 'Escape') setEditingCell(null);
+  };
+
+  const hasChanges = Object.keys(changes).length > 0 || deletedRows.size > 0;
+  const isReadOnly = !tableName;
+
+  if (!data) {
+    return (
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/10">
+            <Database size={48} className="mb-4 opacity-10" />
+            <p className="text-sm font-medium">Ready to execute query</p>
+            <p className="text-xs opacity-60 mt-1">Results will appear here</p>
+        </div>
+    );
+  }
+
+  if (data.error) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-destructive/5">
+            <AlertCircle size={32} className="mb-4 text-destructive opacity-80" />
+            <h3 className="text-lg font-bold mb-2 text-destructive">Query Error</h3>
+            <div className="bg-background p-4 rounded-lg border border-destructive/20 font-mono text-sm max-w-2xl w-full overflow-auto shadow-sm text-left">
+                <code className="text-destructive/90 whitespace-pre-wrap">{data.error}</code>
+            </div>
+        </div>
+      );
+  }
+
+  if (data.rows.length === 0 && data.columns.length === 0) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-emerald-500/5">
+            <CheckCircle size={32} className="mb-4 text-emerald-500 opacity-80" />
+            <p className="text-lg font-bold text-emerald-600">Command Executed</p>
+            <span className="text-sm text-muted-foreground mt-2">The query completed successfully, but returned no rows.</span>
+        </div>
+      );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      {(hasChanges || selectedRows.size > 0 || hasClipboardData) && (
+          <div className="bg-muted/30 border-b px-4 py-1.5 flex items-center justify-between animate-in fade-in slide-in-from-top-1 h-10">
+              <div className="flex items-center gap-4">
+                  {selectedRows.size > 0 && (
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-primary uppercase">
+                          <CheckSquare size={14} />
+                          {selectedRows.size} rows selected
+                      </div>
+                  )}
+                  {hasChanges && (
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 uppercase">
+                          <RotateCcw size={14} />
+                          {Object.keys(changes).length + deletedRows.size} pending changes
+                      </div>
+                  )}
+              </div>
+              <div className="flex gap-2">
+                  {selectedRows.size > 0 && (
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1.5" onClick={handleCopyRows}>
+                          <Copy size={12} /> Copy
+                      </Button>
+                  )}
+                  {hasClipboardData && tableName && (
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1.5 text-primary border-primary/20 hover:bg-primary/5" onClick={handlePasteRows} disabled={applying}>
+                          <ClipboardPaste size={12} /> Paste into {tableName}
+                      </Button>
+                  )}
+                  {hasChanges && (
+                      <>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => { setChanges({}); setDeletedRows(new Set()); }} disabled={applying}>Discard</Button>
+                        <Button variant="default" size="sm" className="h-7 text-[10px] bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={handleApplyChanges} loading={applying}><Save size={12} /> Apply Changes</Button>
+                      </>
+                  )}
+              </div>
+          </div>
+      )}
+
+      <ScrollArea className="flex-1" ref={scrollAreaRef}>
+        <table className="w-full text-left border-collapse text-xs whitespace-nowrap font-mono">
+          <thead className="sticky top-0 bg-muted/80 backdrop-blur-md shadow-sm z-10">
+            <tr className="border-b border-border">
+              <th className="p-2.5 w-10 text-center border-r border-border/50">
+                  <Checkbox 
+                    checked={data.rows.length > 0 && selectedRows.size === data.rows.length} 
+                    onCheckedChange={toggleSelectAll}
+                    className="w-3.5 h-3.5"
+                  />
+              </th>
+              <th className="p-2.5 w-10 text-center text-muted-foreground select-none font-medium border-r border-border/50">#</th>
+              {data.columns.map(col => (
+                <th 
+                    key={col} 
+                    className={cn(
+                        "p-2.5 font-bold text-foreground select-none border-r border-border/50 bg-muted/30 transition-colors",
+                        onSort && "cursor-pointer hover:bg-muted/50"
+                    )}
+                    onClick={() => handleSort(col)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Layers size={10} className={cn("text-primary/70", sortColumn === col && "text-primary")} />
+                        {col}
+                      </div>
+                      {onSort && sortColumn === col && (
+                          <div className="text-primary animate-in fade-in zoom-in duration-200">
+                              {sortDirection === 'ASC' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                          </div>
+                      )}
+                      {onSort && sortColumn !== col && (
+                          <div className="text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors">
+                              <ArrowUp size={10} />
+                          </div>
+                      )}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {data.rows.map((row, i) => {
+              const isDeleted = deletedRows.has(i);
+              const isSelected = selectedRows.has(i);
+              return (
+                <tr key={i} className={cn("hover:bg-primary/5 group transition-colors even:bg-muted/10", isDeleted && "bg-destructive/10 hover:bg-destructive/20 line-through opacity-60", isSelected && "bg-primary/5")}>
+                  <td className="p-2 border-r border-border/50 text-center">
+                      <Checkbox 
+                        checked={isSelected} 
+                        onCheckedChange={() => toggleSelectRow(i)}
+                        className="w-3.5 h-3.5"
+                      />
+                  </td>
+                  <td className="p-2 border-r border-border/50 text-center text-muted-foreground/60 font-medium group-hover:text-primary relative">
+                      {!isReadOnly && (
+                          <button 
+                            className={cn("absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/80", isDeleted ? "text-primary" : "text-destructive")}
+                            onClick={(e) => { e.stopPropagation(); toggleDeleteRow(i); }}
+                            title={isDeleted ? "Restore Row" : "Delete Row"}
+                          >
+                              {isDeleted ? <RotateCcw size={12} /> : <Trash2 size={12} />}
+                          </button>
+                      )}
+                      <span className={cn(isDeleted && "opacity-0")}>{i+1}</span>
+                  </td>
+                  {data.columns.map(col => {
+                    const cellKey = `${i}-${col}`;
+                    const isEditing = editingCell?.rowIndex === i && editingCell?.column === col;
+                    const isChanged = changes[cellKey] !== undefined;
+                    const displayValue = isChanged ? changes[cellKey] : row[col];
+                    const isNull = displayValue === null;
+
+                    return (
+                      <td 
+                        key={col} 
+                        className={cn("p-0 border-r border-border/50 text-foreground/90 transition-colors relative min-w-[80px]", isChanged && "bg-amber-500/10", isDeleted && "pointer-events-none")}
+                        onDoubleClick={() => !isDeleted && startEditing(i, col, displayValue)}
+                      >
+                          {isEditing ? (
+                              <input 
+                                autoFocus
+                                className="absolute inset-0 w-full h-full bg-background border-2 border-primary outline-none px-2 z-20"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={saveEdit}
+                                onKeyDown={handleKeyDown}
+                              />
+                          ) : (
+                              <div className={cn(
+                                "px-2 py-2 truncate",
+                                ((dbType === 'redis' && col === 'key') || (dbType === 'mongodb' && col === 'collection')) && "text-primary font-bold cursor-pointer hover:underline"
+                              )}
+                              onClick={() => {
+                                if (((dbType === 'redis' && col === 'key') || (dbType === 'mongodb' && col === 'collection')) && onSelectKey) {
+                                    onSelectKey(String(displayValue));
+                                }
+                              }}
+                              >
+                                {isNull ? <span className="text-muted-foreground/40 italic font-sans text-[10px]">NULL</span> : <span className="flex-1">{String(displayValue)}</span>}
+                              </div>
+                          )}
+                          {isChanged && !isEditing && (<div className="absolute top-0 right-0 w-1.5 h-1.5 bg-amber-500 rounded-bl-sm" title={`Original: ${String(row[col])}`} />)}
+                      </td>
+                    );
+                })}
+              </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+      <div className="bg-muted/50 border-t border-border text-muted-foreground text-[10px] px-3 py-1 flex justify-between items-center font-medium h-9">
+          <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5 min-w-[120px]">
+                  <span className="font-bold text-foreground/70">{data.rows.length}</span> rows
+                  <span className="opacity-30">|</span>
+                  <span className="font-bold text-foreground/70">{data.columns.length}</span> columns
+              </div>
+              <div className="flex items-center gap-2 border-l border-border/50 pl-4">
+                  <span className="text-[9px] uppercase tracking-wider font-bold opacity-60">Page Size:</span>
+                  <input 
+                    type="number" 
+                    className="w-12 h-6 bg-background border rounded px-1.5 text-xs text-foreground font-bold focus:ring-1 focus:ring-primary outline-none"
+                    value={pageSize}
+                    onChange={(e) => onPageSizeChange?.(parseInt(e.target.value) || 0)}
+                    onKeyDown={(e) => e.key === 'Enter' && onRefresh?.()}
+                  />
+                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 hover:bg-background" onClick={onRefresh} title="Refresh with new page size">
+                      <RotateCcw size={10} />
+                  </Button>
+              </div>
+
+              {onPageChange && (
+                  <div className="flex items-center gap-1 border-l border-border/50 pl-4">
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={page <= 1}
+                        onClick={() => onPageChange(1)}
+                        title="First Page"
+                      >
+                          <ChevronsLeft size={12} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={page <= 1}
+                        onClick={() => onPageChange(page - 1)}
+                        title="Previous Page"
+                      >
+                          <ChevronLeft size={12} />
+                      </Button>
+                      
+                      <div className="flex items-center gap-1.5 px-2 bg-background/50 border rounded h-6 text-[10px]">
+                          <span className="opacity-60 uppercase font-bold text-[8px]">Page</span>
+                          <span className="font-black text-foreground">{page}</span>
+                          {totalRows > 0 && (
+                              <>
+                                <span className="opacity-30">/</span>
+                                <span className="opacity-60">{Math.ceil(totalRows / pageSize)}</span>
+                              </>
+                          )}
+                      </div>
+
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={totalRows > 0 ? page >= Math.ceil(totalRows / pageSize) : data.rows.length < pageSize}
+                        onClick={() => onPageChange(page + 1)}
+                        title="Next Page"
+                      >
+                          <ChevronRight size={12} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="h-6 w-6" 
+                        disabled={totalRows > 0 ? page >= Math.ceil(totalRows / pageSize) : true}
+                        onClick={() => onPageChange(Math.ceil(totalRows / pageSize))}
+                        title="Last Page"
+                      >
+                          <ChevronsRight size={12} />
+                      </Button>
+                  </div>
+              )}
+          </div>
+          <div className="flex items-center gap-3">
+              {totalRows > 0 && (
+                  <div className="flex items-center gap-1 opacity-60 text-[9px] uppercase font-bold">
+                      <Database size={10} />
+                      {totalRows.toLocaleString()} Total Records
+                  </div>
+              )}
+              <div className="flex items-center gap-1 opacity-60">
+                  <CheckCircle size={10} className="text-emerald-500" />
+                  Query successful
+              </div>
+          </div>
+      </div>
+    </div>
+  );
+});
+
+ResultsTable.displayName = 'ResultsTable';

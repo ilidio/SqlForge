@@ -1,0 +1,639 @@
+import { useState, useEffect, useImperativeHandle, forwardRef, useRef, useCallback } from 'react';
+import { api } from '../api';
+import { toast } from 'sonner';
+import { ResultsTable, type ResultsTableHandle } from './ResultsTable';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { IndexAdvisor } from './IndexAdvisor';
+import { VisualExplain } from './VisualExplain';
+import { BenchmarkDialog } from './BenchmarkDialog';
+import { AiActionsMenu, type AiTask } from './AiActionsMenu';
+import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, Wand2, History, Clock } from 'lucide-react';
+import Editor, { useMonaco } from '@monaco-editor/react';
+
+interface Props {
+  connectionId: string;
+  initialSql?: string;
+  onSqlChange?: (sql: string) => void;
+}
+
+export interface QueryTabHandle {
+  formatSql: () => void;
+  executeQuery: () => void;
+  toggleAi: (open?: boolean) => void;
+  undo: () => void;
+  redo: () => void;
+  focus: () => void;
+  focusResults: () => void;
+  saveQuery: () => void;
+}
+
+export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '', onSqlChange }, ref) => {
+  const [sql, setSql] = useState(initialSql);
+  const resultsTableRef = useRef<ResultsTableHandle>(null);
+  const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [withAnalyze, setWithAnalyze] = useState(false);
+  const [history, setHistory] = useState<{sql: string, timestamp: number}[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  
+  // AI State
+  const [showAi, setShowAi] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [aiModel, setAiModel] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [refactorLoading, setRefactorLoading] = useState(false);
+  const [showAdvisor, setShowAdvisor] = useState(false);
+  const [showBenchmark, setShowBenchmark] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'explain'>('grid');
+  const [planData, setPlanData] = useState<any>(null);
+  const [planDialect, setPlanDialect] = useState<string>('');
+
+  // Editor Ref
+  const editorRef = useRef<any>(null);
+  const monaco = useMonaco();
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    const savedModel = localStorage.getItem('ai_model');
+    if (savedKey) setApiKey(savedKey);
+    if (savedModel) setAiModel(savedModel);
+
+    // Load history
+    const savedHistory = localStorage.getItem(`query_history_${connectionId}`);
+    if (savedHistory) {
+        try {
+            setHistory(JSON.parse(savedHistory));
+        } catch (e) {
+            console.error("Failed to parse history", e);
+        }
+    }
+  }, [connectionId]);
+
+  const saveToHistory = (querySql: string) => {
+    if (!querySql.trim()) return;
+    const newEntry = { sql: querySql, timestamp: Date.now() };
+    
+    // Check if last entry is the same
+    if (history.length > 0 && history[0].sql === querySql) return;
+
+    const newHistory = [newEntry, ...history.slice(0, 49)]; // Keep last 50
+    setHistory(newHistory);
+    localStorage.setItem(`query_history_${connectionId}`, JSON.stringify(newHistory));
+  };
+
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('gemini_api_key', key);
+  };
+
+  const saveAiModel = (model: string) => {
+    setAiModel(model);
+    localStorage.setItem('ai_model', model);
+  };
+
+  const fetchSchemaForAutocomplete = useCallback(async () => {
+    if (!monaco) return;
+    try {
+      const tables = await api.getTables(connectionId);
+      // Basic suggestion generation
+      const suggestions = tables.map((t: any) => ({
+        label: t.name,
+        kind: monaco.languages.CompletionItemKind.Class,
+        insertText: t.name,
+        detail: t.type
+      }));
+
+      // Register completion provider
+      monaco.languages.registerCompletionItemProvider('sql', {
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+          
+          return {
+            suggestions: suggestions.map((s: any) => ({ ...s, range }))
+          };
+        }
+      });
+      
+    } catch (e) {
+      console.error("Failed to load schema for autocomplete", e);
+    }
+  }, [connectionId, monaco]);
+
+  useEffect(() => {
+    if (monaco) {
+        fetchSchemaForAutocomplete();
+    }
+  }, [monaco, fetchSchemaForAutocomplete]);
+
+  const runQuery = async () => {
+    setLoading(true);
+    setViewMode('grid');
+    try {
+      const res = await api.runQuery(connectionId, sql);
+      setResult(res);
+      if (!res.error) {
+          saveToHistory(sql);
+      }
+    } catch (e: unknown) {
+      setResult({ columns: [], rows: [], error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runExplain = async () => {
+    setLoading(true);
+    setViewMode('explain');
+    try {
+      const res = await api.explainQuery(connectionId, sql, withAnalyze);
+      if (res.error) {
+          toast.error("Explain failed: " + res.error);
+      } else {
+          setPlanData(res.plan);
+          setPlanDialect(res.dialect);
+      }
+    } catch (e: any) {
+        toast.error("Explain failed: " + e.message);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const formatSql = () => {
+    editorRef.current?.getAction('editor.action.formatDocument').run();
+  };
+
+  const toggleAi = (open?: boolean) => {
+    setShowAi(open ?? !showAi);
+  };
+
+  const undo = () => {
+    editorRef.current?.trigger('source', 'undo', {});
+  };
+
+  const redo = () => {
+    editorRef.current?.trigger('source', 'redo', {});
+  };
+
+  const focus = () => {
+    editorRef.current?.focus();
+  };
+
+  const focusResults = () => {
+    resultsTableRef.current?.focus();
+  };
+
+  const saveQuery = () => {
+    if (!sql) return;
+    const blob = new Blob([sql], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `query_${new Date().getTime()}.sql`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Query saved as .sql file");
+  };
+
+  useImperativeHandle(ref, () => ({
+    formatSql,
+    executeQuery: runQuery,
+    toggleAi,
+    undo,
+    redo,
+    focus,
+    focusResults,
+    saveQuery
+  }));
+
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor;
+  };
+
+  const generateSQL = async () => {
+    if (!apiKey || !aiModel) {
+      toast.warning("Please configure both Gemini API Key and AI Model in Settings first.");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const res = await api.generateSQL(connectionId, aiPrompt, apiKey, aiModel);
+      setSql(res.sql);
+      
+      const autoExecute = localStorage.getItem('auto_execute') === 'true';
+      if (autoExecute) {
+          setTimeout(() => runQuery(), 100);
+      }
+    } catch (e: unknown) {
+      const message = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (e as Error).message || String(e);
+      toast.error("AI Error: " + message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const performAiAction = async (task: AiTask) => {
+    if (!apiKey || !aiModel) {
+      toast.warning("Please configure both Gemini API Key and AI Model in Settings first.");
+      return;
+    }
+    if (!sql.trim()) {
+      toast.warning("Please enter some SQL for the AI to process.");
+      return;
+    }
+    setRefactorLoading(true);
+    try {
+      const res = await api.refactorSQL(connectionId, sql, apiKey, aiModel, task);
+      setSql(res.refactored_sql);
+      toast.success("AI Action Complete!", {
+          description: res.explanation,
+          duration: 5000
+      });
+    } catch (e: unknown) {
+      const message = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (e as Error).message || String(e);
+      toast.error("AI Error: " + message);
+    } finally {
+      setRefactorLoading(false);
+    }
+  };
+
+  const exportCSV = () => {
+    if (!result || !result.rows || result.rows.length === 0) return;
+    
+    const headers = result.columns.join(',');
+    const rows = result.rows.map((row: Record<string, unknown>) => 
+        result.columns.map((col: string) => {
+            const val = row[col];
+            if (val === null || val === undefined) return '';
+            const strVal = String(val);
+            if (strVal.includes(',') || strVal.includes('"') || strVal.includes('\n')) {
+                return `"${strVal.replace(new RegExp('"', 'g'), '""')}"`;
+            }
+            return strVal;
+        }).join(',')
+    ).join('\n');
+    
+    const csvContent = `${headers}\n${rows}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportJSON = () => {
+    if (!result || !result.rows) return;
+    const blob = new Blob([JSON.stringify(result.rows, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'export.json');
+    link.click();
+  };
+
+  const exportSQL = () => {
+    if (!result || !result.rows || result.rows.length === 0) return;
+    const tableName = 'exported_data';
+    const sqlInserts = result.rows.map(row => {
+        const cols = Object.keys(row).join(', ');
+        const vals = Object.values(row).map(v => typeof v === 'string' ? `'${v.replace(new RegExp("'", 'g'), "''")}'` : v === null ? 'NULL' : v).join(', ');
+        return `INSERT INTO ${tableName} (${cols}) VALUES (${vals});`;
+    }).join('\n');
+    
+    const blob = new Blob([sqlInserts], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'export.sql');
+    link.click();
+  };
+
+  const getInferredTable = (query: string) => {
+    if (!query) return undefined;
+    const q = query.trim().toUpperCase();
+    // Heuristic: If it's a complex query, don't allow editing
+    if (q.includes(' JOIN ') || 
+        q.includes(' GROUP BY ') || 
+        q.includes(' UNION ') || 
+        q.includes(' DISTINCT ') || 
+        q.includes(' INTERSECT ') || 
+        q.includes(' EXCEPT ')) {
+      return undefined;
+    }
+    
+    // Check if there are multiple tables in FROM
+    const fromMatch = query.match(/FROM\s+([a-zA-Z0-9_,\\s]+)/i);
+    if (fromMatch) {
+        const tablesStr = fromMatch[1];
+        if (tablesStr.includes(',')) return undefined; // Multiple tables
+        return tablesStr.trim().split(/\s+/)[0];
+    }
+    return undefined;
+  };
+
+  const inferredTable = getInferredTable(sql);
+
+  return (
+    <div className="flex flex-col h-full bg-background">
+      <div className="h-1/2 flex flex-col border-b border-border relative">
+        
+        {/* AI Toolbar */}
+        {showAi && (
+          <div className="bg-primary/5 p-3 border-b border-primary/10 flex flex-col gap-3 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex gap-2">
+              <Input 
+                placeholder="Describe what you want to find (e.g., 'Total revenue by month for 2024')"
+                className="flex-1 bg-background border-primary/20 focus-visible:ring-primary/30"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && generateSQL()}
+              />
+              <Button 
+                onClick={generateSQL}
+                disabled={aiLoading}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+              >
+                {aiLoading ? <span className="animate-spin text-xs">⏳</span> : <Sparkles size={14} />}
+                Generate SQL
+              </Button>
+               <Button variant="ghost" size="icon" onClick={() => setShowAi(false)} className="text-muted-foreground">
+                <X size={16} />
+              </Button>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                <Key size={12} />
+                Gemini API Key:
+              </div>
+              <Input 
+                type="password"
+                placeholder="••••••••••••••••••••"
+                className="h-6 text-[10px] w-48 bg-transparent border-dashed border-muted-foreground/30 focus-visible:border-primary/50"
+                value={apiKey}
+                onChange={e => saveApiKey(e.target.value)}
+              />
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium ml-2">
+                <Terminal size={12} />
+                Model:
+              </div>
+              <Input 
+                placeholder="e.g. gemini-1.5-flash"
+                className="h-6 text-[10px] w-36 bg-transparent border-dashed border-muted-foreground/30 focus-visible:border-primary/50"
+                value={aiModel}
+                onChange={e => saveAiModel(e.target.value)}
+              />
+              <div className="text-[10px] text-muted-foreground/60 italic ml-2">Your settings are stored locally.</div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Toolbar */}
+        <div className="bg-muted/30 p-1.5 flex justify-between items-center border-b border-border h-11">
+          <div className="flex items-center gap-4 px-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-foreground/70">
+                <Terminal size={14} className="text-primary" />
+                SQL Editor
+            </div>
+            {!showAi && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowAi(true)}
+                className={cn(
+                    "h-7 text-xs gap-1.5",
+                    (!apiKey || !aiModel) ? "text-amber-500 hover:text-amber-600 hover:bg-amber-500/10" : "text-primary hover:text-primary hover:bg-primary/10"
+                )}
+              >
+                <Sparkles size={12} /> 
+                AI Copilot
+                {(!apiKey || !aiModel) && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" title="AI not configured" />}
+              </Button>
+            )}
+            <AiActionsMenu 
+              onAction={performAiAction} 
+              loading={refactorLoading}
+              disabled={!apiKey || !aiModel}
+            />
+          </div>
+          <div className="flex gap-2 mr-1 items-center">
+             {result && result.rows && result.rows.length > 0 && (
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button 
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs gap-1.5"
+                        >
+                            <Download size={13} /> Export <ChevronDown size={12} className="opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-40 p-1 flex flex-col gap-0.5" align="end">
+                        <Button variant="ghost" size="sm" className="justify-start font-normal text-xs h-8 gap-2" onClick={exportCSV}>
+                            <FileSpreadsheet size={14} className="text-emerald-500" /> CSV
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start font-normal text-xs h-8 gap-2" onClick={exportJSON}>
+                            <FileJson size={14} className="text-amber-500" /> JSON
+                        </Button>
+                        <Button variant="ghost" size="sm" className="justify-start font-normal text-xs h-8 gap-2" onClick={exportSQL}>
+                            <FileCode size={14} className="text-blue-500" /> SQL Inserts
+                        </Button>
+                    </PopoverContent>
+                 </Popover>
+             )}
+             
+             <div className="h-4 w-px bg-border mx-1" />
+
+             <Popover open={showHistory} onOpenChange={setShowHistory}>
+                <PopoverTrigger asChild>
+                    <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                        title="Query History"
+                    >
+                        <History size={13} />
+                        History
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="end">
+                    <div className="p-3 border-b border-border font-semibold text-sm flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-primary" />
+                            Local Query History
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => {
+                            setHistory([]);
+                            localStorage.removeItem(`query_history_${connectionId}`);
+                        }}>
+                            Clear All
+                        </Button>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                        {history.length === 0 ? (
+                            <div className="p-8 text-center text-xs text-muted-foreground">
+                                No history yet. Execute some queries!
+                            </div>
+                        ) : (
+                            history.map((entry, idx) => (
+                                <div 
+                                    key={idx} 
+                                    className="p-3 border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer group"
+                                    onClick={() => {
+                                        setSql(entry.sql);
+                                        setShowHistory(false);
+                                    }}
+                                >
+                                    <div className="text-[10px] text-muted-foreground mb-1 flex justify-between">
+                                        {new Date(entry.timestamp).toLocaleString()}
+                                        <span className="opacity-0 group-hover:opacity-100 text-primary font-medium transition-opacity">Restore</span>
+                                    </div>
+                                    <code className="text-[11px] block truncate font-mono bg-muted/30 p-1 rounded border border-border/50">
+                                        {entry.sql}
+                                    </code>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </PopoverContent>
+             </Popover>
+
+             <div className="h-4 w-px bg-border mx-1" />
+
+             <Button 
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowAdvisor(true)}
+                className="h-8 text-xs gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                title="Analyze Query Performance"
+             >
+                <Zap size={13} />
+                Analyze
+             </Button>
+             <Button 
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowBenchmark(true)}
+                className="h-8 text-xs gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                title="Query Stress Test"
+             >
+                <BarChart2 size={13} />
+                Stress Test
+             </Button>
+             
+             <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 border border-border h-8">
+                 <div className="flex items-center gap-1.5">
+                    <Checkbox 
+                        id="analyze-mode" 
+                        checked={withAnalyze} 
+                        onCheckedChange={(c) => setWithAnalyze(!!c)} 
+                        className="w-3.5 h-3.5"
+                    />
+                    <Label htmlFor="analyze-mode" className="text-[10px] font-medium cursor-pointer text-muted-foreground hover:text-foreground">
+                        Exec Stats
+                    </Label>
+                 </div>
+                 <Button 
+                    size="sm"
+                    variant="ghost"
+                    onClick={runExplain}
+                    loading={loading && viewMode === 'explain'}
+                    className="h-6 text-xs gap-1.5 px-2 hover:bg-background shadow-none border-l rounded-l-none ml-1"
+                    title="Visual Explain Plan"
+                 >
+                    <Activity size={13} />
+                    Explain
+                 </Button>
+             </div>
+
+             <Button 
+                size="sm"
+                onClick={runQuery}
+                loading={loading && viewMode === 'grid'}
+                className="h-8 text-xs font-bold gap-1.5 px-4 shadow-sm ml-2"
+             >
+                <Play size={13} />
+                Execute
+             </Button>
+          </div>
+        </div>
+        
+        <div className="flex-1 relative bg-background/50 overflow-hidden">
+            <Editor
+                height="100%"
+                defaultLanguage="sql"
+                value={sql}
+                onChange={(value) => {
+                    const newSql = value || '';
+                    setSql(newSql);
+                    onSqlChange?.(newSql);
+                }}
+                theme="vs-dark" // We can toggle this based on app theme if needed
+                onMount={handleEditorDidMount}
+                options={{
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, monospace',
+                    padding: { top: 16 },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    renderLineHighlight: 'all',
+                    contextmenu: true,
+                    readOnly: false,
+                    scrollbar: {
+                        vertical: 'visible',
+                        horizontal: 'visible'
+                    }
+                }}
+            />
+        </div>
+      </div>
+      
+      <div className="h-1/2 flex flex-col overflow-hidden bg-background relative">
+         {viewMode === 'grid' ? (
+             <ResultsTable 
+                ref={resultsTableRef}
+                data={result} 
+                connectionId={connectionId} 
+                tableName={inferredTable}
+                onRefresh={runQuery}
+             />
+         ) : (
+             <VisualExplain plan={planData} dialect={planDialect} />
+         )}
+      </div>
+      
+      <IndexAdvisor 
+        open={showAdvisor} 
+        onOpenChange={setShowAdvisor} 
+        connectionId={connectionId} 
+        sql={sql} 
+      />
+
+      <BenchmarkDialog 
+        open={showBenchmark} 
+        onOpenChange={setShowBenchmark} 
+        connectionId={connectionId} 
+        sql={sql} 
+      />
+    </div>
+  );
+});
+
+QueryTab.displayName = 'QueryTab';

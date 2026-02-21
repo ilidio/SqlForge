@@ -1,0 +1,12 @@
+SET "app:name" "SqlForge"
+SET "app:version" "1.0.0"
+SET "app:environment" "development"
+
+HSET "user:1" name "Ilidio" role "Admin" active "true"
+HSET "user:2" name "Dev" role "Developer" active "true"
+
+LPUSH "recent_activities" "Login success" "Query executed" "Backup started"
+
+SADD "features" "query_editor" "er_diagram" "ai_assistant" "sync_engine"
+
+ZADD "leaderboard" 100 "user:1" 85 "user:2" 50 "guest"

@@ -1,0 +1,160 @@
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8000';
+
+export interface ConnectionConfig {
+  id?: string;
+  name: string;
+  type: 'sqlite' | 'postgresql' | 'mysql' | 'mssql' | 'oracle' | 'redis' | 'mongodb';
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  database: string;
+  filepath?: string;
+}
+
+export interface ForeignKeyInfo {
+  constrained_column: string;
+  referred_table: string;
+  referred_column: string;
+}
+
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  nullable: boolean;
+  primary_key: boolean;
+}
+
+export interface TableSchema {
+  name: string;
+  columns: ColumnInfo[];
+  foreign_keys: ForeignKeyInfo[];
+}
+
+export interface ColumnDefinition {
+  name: string;
+  type: string;
+  nullable: boolean;
+  primary_key: boolean;
+  default?: string;
+}
+
+export interface AlterTableRequest {
+  connection_id: string;
+  table_name: string;
+  action: 'add_column' | 'drop_column' | 'rename_column' | 'alter_column';
+  column_name?: string;
+  new_column_name?: string;
+  column_def?: ColumnDefinition;
+}
+
+export interface ScheduledTask {
+  id?: string;
+  name: string;
+  task_type: 'backup' | 'sync' | 'query' | 'batch';
+  schedule_config: {
+    type: 'cron' | 'interval';
+    expression?: string; // For cron, e.g., "0 2 * * 0"
+    weeks?: number;
+    days?: number;
+    hours?: number;
+    minutes?: number;
+    seconds?: number;
+  };
+  task_config: any;
+  enabled: boolean;
+  last_run?: string;
+}
+
+export interface TaskHistory {
+  id: number;
+  task_id: string;
+  timestamp: string;
+  status: 'success' | 'error';
+  result: any;
+  duration_ms: number;
+}
+
+export interface DailyTimeline {
+  id: string;
+  dateTime: string;
+  content: string;
+  noteIds: number[];
+}
+
+export interface SessionSummary {
+  date: string;
+  summary: string;
+  timelines: DailyTimeline[];
+}
+
+export const api = {
+  getConnections: () => axios.get<ConnectionConfig[]>(`${API_URL}/connections`).then(r => r.data),
+  saveConnection: (config: ConnectionConfig) => axios.post<ConnectionConfig>(`${API_URL}/connections`, config).then(r => r.data),
+  deleteConnection: (connId: string) => axios.delete(`${API_URL}/connections/${connId}`).then(r => r.data),
+  deleteAllConnections: () => axios.delete(`${API_URL}/connections`).then(r => r.data),
+  discoverConnections: () => axios.get<Partial<ConnectionConfig>[]>(`${API_URL}/connections/discover`).then(r => r.data),
+  getAiModels: (apiKey: string) => axios.get<{name: string, display_name: string, description: string}[]>(`${API_URL}/ai/models`, { params: { api_key: apiKey } }).then(r => r.data),
+  testConnection: (config: ConnectionConfig) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/test`, config).then(r => r.data),
+  getConnectionsHealth: () => axios.get<Record<string, 'online' | 'offline'>>(`${API_URL}/connections/health`).then(r => r.data),
+  getTables: (connId: string) => axios.get<{name: string, type: string}[]>(`${API_URL}/connections/${connId}/tables`).then(r => r.data),
+  getSchemaDetails: (connId: string) => axios.get<TableSchema[]>(`${API_URL}/connections/${connId}/schema`).then(r => r.data),
+  alterTable: (connId: string, request: AlterTableRequest) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/${connId}/schema/alter`, request).then(r => r.data),
+  dropObject: (connId: string, name: string, type: string) => axios.post(`${API_URL}/connections/${connId}/drop`, { name, type }).then(r => r.data),
+  importData: (connId: string, tableName: string, file: File, mode: 'append' | 'truncate', format: 'csv' | 'json') => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mode', mode);
+      formData.append('format', format);
+      return axios.post<{success: boolean, message: string}>(`${API_URL}/connections/${connId}/import/${tableName}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+      }).then(r => r.data);
+  },
+  getExportUrl: (connId: string, tableName: string, format: 'csv' | 'json' | 'sql', masked: boolean = false) => {
+      // Return the direct URL for streaming
+      return `${API_URL}/connections/${connId}/export/${tableName}?format=${format}&masked=${masked}`;
+  },
+  runQuery: (connId: string, sql: string) => axios.post<{columns: string[], rows: Record<string, unknown>[], error: string | null}>(`${API_URL}/query`, { connection_id: connId, sql }).then(r => r.data),
+  runBatchQueries: (connId: string, operations: any[]) => axios.post<{results: {success: boolean, error: string | null}[]}>(`${API_URL}/query/batch`, { connection_id: connId, operations: operations }).then(r => r.data),
+  getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),
+  generateSQL: (connId: string, prompt: string, apiKey: string, model: string) => axios.post<{sql: string}>(`${API_URL}/ai/generate`, { connection_id: connId, prompt, api_key: apiKey, model }).then(r => r.data),
+  getDailyBriefing: (apiKey?: string) => axios.get<SessionSummary>(`${API_URL}/ai/briefing`, { params: { api_key: apiKey } }).then(r => r.data),
+  refactorSQL: (connId: string, sql: string, apiKey: string, model: string, task: string = 'refactor') => axios.post<{refactored_sql: string, explanation: string, changes: any[]}>(`${API_URL}/pro/refactorer/refactor`, { connection_id: connId, prompt: sql, api_key: apiKey, model, task }).then(r => r.data),
+  hydrateTable: (connId: string, tableName: string, count: number, apiKey: string, model: string) => axios.post<{success: boolean, count: number}>(`${API_URL}/pro/generator/hydrate`, { connection_id: connId, table_name: tableName, count, api_key: apiKey, model }).then(r => r.data),
+  analyzeQuery: (connId: string, sql: string, apiKey: string, model: string) => axios.post<any>(`${API_URL}/pro/index-advisor/analyze`, { connection_id: connId, prompt: sql, api_key: apiKey, model }).then(r => r.data),
+  testVirtualIndex: (connId: string, sql: string, indexDdl: string) => axios.post<any>(`${API_URL}/pro/what-if/analyze`, { connection_id: connId, sql, index_ddl: indexDdl }).then(r => r.data),
+  getLocks: (connId: string) => axios.get<{nodes: any[], edges: any[], error?: string}>(`${API_URL}/monitor/locks/${connId}`).then(r => r.data),
+  getHealthAudit: (connId: string) => axios.get<{score: number, risks: any[], summary: string}>(`${API_URL}/monitor/health/${connId}`).then(r => r.data),
+  getProcesses: (connId: string) => axios.get<any[]>(`${API_URL}/monitor/processes/${connId}`).then(r => r.data),
+  killSession: (connId: string, pid: string) => axios.post<{success: boolean, message: string}>(`${API_URL}/monitor/kill`, { connection_id: connId, pid }).then(r => r.data),
+  runBenchmark: (connId: string, sql: string, concurrency: number, duration: number) => axios.post<any>(`${API_URL}/query/benchmark`, { connection_id: connId, sql, concurrency, duration }).then(r => r.data),
+  explainQuery: (connId: string, sql: string, analyze: boolean = false) => axios.post<{plan: any, dialect: string, error: string | null}>(`${API_URL}/query/explain`, { connection_id: connId, sql, analyze }).then(r => r.data),
+  diffSchemas: (sourceId: string, targetId: string, mode: string = 'structure') => axios.post<{sql: string}>(`${API_URL}/pro/sync/diff`, { source_connection_id: sourceId, target_connection_id: targetId, mode }).then(r => r.data),
+  visualDiff: (connId: string, schema: any[]) => axios.post<{sql_text: string, statements: string[]}>(`${API_URL}/pro/sync/visual-diff`, { connection_id: connId, schema }).then(r => r.data),
+  executeSync: (sourceId: string, targetId: string, mode: string = 'structure', dryRun: boolean = true) => axios.post<{status: string, message: string, sql?: string}>(`${API_URL}/pro/sync/execute`, { source_connection_id: sourceId, target_connection_id: targetId, mode, dry_run: dryRun }).then(r => r.data),
+  
+  // Automation
+  getScheduledTasks: () => axios.get<ScheduledTask[]>(`${API_URL}/automation/tasks`).then(r => r.data),
+  saveScheduledTask: (task: ScheduledTask) => axios.post<ScheduledTask>(`${API_URL}/automation/tasks`, task).then(r => r.data),
+  deleteScheduledTask: (taskId: string) => axios.delete(`${API_URL}/automation/tasks/${taskId}`).then(r => r.data),
+  runTaskManually: (taskId: string) => axios.post<{status: string}>(`${API_URL}/automation/tasks/${taskId}/run`).then(r => r.data),
+  getTaskHistory: (taskId?: string) => axios.get<TaskHistory[]>(`${API_URL}/automation/history`, { params: { task_id: taskId } }).then(r => r.data),
+  
+  // Workspaces
+  listWorkspaces: (connId: string) => axios.get<any[]>(`${API_URL}/workspaces/${connId}`).then(r => r.data),
+  loadWorkspace: (workspaceId: string) => axios.get<any>(`${API_URL}/workspaces/load/${workspaceId}`).then(r => r.data),
+  saveWorkspace: (connId: string, name: string, content: any, id?: string) => axios.post<{id: string}>(`${API_URL}/workspaces/save`, { connection_id: connId, name, content, id }).then(r => r.data),
+  deleteWorkspace: (workspaceId: string) => axios.delete(`${API_URL}/workspaces/${workspaceId}`).then(r => r.data),
+
+  // Favorites
+  getFavorites: () => axios.get<any[]>(`${API_URL}/favorites`).then(r => r.data),
+  addFavorite: (type: 'query' | 'table' | 'connection', name: string, connectionId: string, target: string) => axios.post<{id: string}>(`${API_URL}/favorites`, { type, name, connection_id: connectionId, target }).then(r => r.data),
+  removeFavorite: (favId: string) => axios.delete(`${API_URL}/favorites/${favId}`).then(r => r.data),
+
+  // Backup & Restore
+  runBackup: (connId: string, incremental: boolean = false, native: boolean = true) => axios.post<any>(`${API_URL}/pro/backup`, { connection_id: connId, incremental, native }).then(r => r.data),
+  runRestore: (connId: string, backupPath: string) => axios.post<any>(`${API_URL}/pro/restore`, { connection_id: connId, backup_path: backupPath }).then(r => r.data),
+  executeScript: (connId: string, filePath: string) => axios.post<any>(`${API_URL}/pro/execute-script`, { connection_id: connId, file_path: filePath }).then(r => r.data),
+};
