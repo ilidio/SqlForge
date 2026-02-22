@@ -31,6 +31,7 @@ vi.mock('../../api', () => ({
     getHistory: vi.fn().mockResolvedValue([]),
     runQuery: vi.fn().mockResolvedValue({ columns: ['id', 'name'], rows: [{id: 1, name: 'Alice'}], error: null }),
     runBatchQueries: vi.fn().mockResolvedValue({ results: [{success: true, error: null}] }),
+    getFavorites: vi.fn().mockResolvedValue([]),
   }
 }));
 

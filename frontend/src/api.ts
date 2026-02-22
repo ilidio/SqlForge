@@ -31,6 +31,12 @@ export interface TableSchema {
   name: string;
   columns: ColumnInfo[];
   foreign_keys: ForeignKeyInfo[];
+  indexes: IndexInfo[];
+}
+
+export interface IndexInfo {
+  name: string;
+  columns: string[];
 }
 
 export interface ColumnDefinition {
@@ -103,7 +109,7 @@ export const api = {
   getSchemaDetails: (connId: string) => axios.get<TableSchema[]>(`${API_URL}/connections/${connId}/schema`).then(r => r.data),
   alterTable: (connId: string, request: AlterTableRequest) => axios.post<{success: boolean, message: string}>(`${API_URL}/connections/${connId}/schema/alter`, request).then(r => r.data),
   dropObject: (connId: string, name: string, type: string) => axios.post(`${API_URL}/connections/${connId}/drop`, { name, type }).then(r => r.data),
-  importData: (connId: string, tableName: string, file: File, mode: 'append' | 'truncate', format: 'csv' | 'json') => {
+  importData: (connId: string, tableName: string, file: File, mode: 'append' | 'truncate', format: 'csv' | 'json' | 'excel' | 'xml' | 'txt' | 'dbf') => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('mode', mode);
@@ -112,7 +118,7 @@ export const api = {
           headers: { 'Content-Type': 'multipart/form-data' }
       }).then(r => r.data);
   },
-  getExportUrl: (connId: string, tableName: string, format: 'csv' | 'json' | 'sql', masked: boolean = false) => {
+  getExportUrl: (connId: string, tableName: string, format: 'csv' | 'json' | 'sql' | 'excel' | 'xml' | 'txt' | 'dbf', masked: boolean = false) => {
       // Return the direct URL for streaming
       return `${API_URL}/connections/${connId}/export/${tableName}?format=${format}&masked=${masked}`;
   },

@@ -17,7 +17,7 @@ import 'reactflow/dist/style.css';
 import dagre from 'dagre';
 import { api, type TableSchema } from '../api';
 import { cn } from '../lib/utils';
-import { Loader2, RefreshCw, Plus, Save, Edit2, Trash2, X, Settings2, Download, Layers, FileText, Type, FolderOpen, ChevronRight } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, Save, Edit2, Trash2, X, Settings2, Download, FileText, FolderOpen, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
@@ -220,6 +220,8 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [modelLevel, setModelLevel] = useState<ModelLevel>('physical');
+  const [hasFetched, setHasFetched] = useState(false); // New state variable
+
 
   // Dialog States
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
@@ -302,17 +304,7 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
       window.print();
   };
 
-  const setEntityType = (tableName: string, type: EntityType) => {
-      setNodes((nds) => nds.map((node) => {
-          if (node.id === tableName) {
-              return {
-                  ...node,
-                  data: { ...node.data, entityType: type }
-              };
-          }
-          return node;
-      }));
-  };
+
 
   const onDeleteNote = useCallback((id: string) => {
       setNodes((nds) => nds.filter((n) => n.id !== id));
@@ -490,11 +482,14 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [connectionId, setNodes, setEdges]); 
+  }, [connectionId, setNodes, setEdges, isEditMode, modelLevel]); 
 
   useEffect(() => {
-    fetchAndLayout();
-  }, [fetchAndLayout]);
+    if (!hasFetched) { // Only run once
+      fetchAndLayout();
+      setHasFetched(true);
+    }
+  }, [fetchAndLayout, hasFetched]);
 
   const callbacksRef = useRef({ onAddColumn, onEditColumn, onRemoveColumn, onDeleteTable, onDeleteNote });
   useEffect(() => {
@@ -560,7 +555,7 @@ export function ERDiagramTab({ connectionId }: ERDiagramTabProps) {
               return;
           }
 
-          const results = await api.runBatchQueries(connectionId, executionStatements.map(s => ({
+          await api.runBatchQueries(connectionId, executionStatements.map(s => ({
               type: 'query',
               table: '',
               data: {},

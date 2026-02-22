@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ClipboardPaste, CheckSquare, Square } from 'lucide-react';
+import { AlertCircle, CheckCircle, Database, Layers, Save, RotateCcw, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ClipboardPaste, CheckSquare } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -8,7 +8,24 @@ import { api } from '../api';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface Props {
-// ... existing props
+  connectionId: string;
+  tableName?: string;
+  dbType?: string;
+  data: {
+    columns: string[];
+    rows: Record<string, unknown>[];
+    error: string | null;
+  } | null;
+  onRefresh?: () => void;
+  onSelectKey?: (key: string) => void;
+  onSort?: (col: string, dir: 'ASC' | 'DESC' | null) => void;
+  onPageSizeChange?: (size: number) => void;
+  onPageChange?: (page: number) => void;
+  sortColumn?: string | null;
+  sortDirection?: 'ASC' | 'DESC' | null;
+  pageSize?: number;
+  page?: number;
+  totalRows?: number;
 }
 
 export interface ResultsTableHandle {

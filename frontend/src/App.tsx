@@ -58,7 +58,7 @@ function App() {
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [syncMode, setSyncMode] = useState<'structure' | 'data' | 'transfer'>('structure');
   const [isBackupOpen, setIsBackupOpen] = useState(false);
-  const [backupMode, setBackupMode] = useState<'backup' | 'restore'>('backup');
+  const [backupMode, setBackupMode] = useState<'backup' | 'restore' | 'execute'>('backup');
   const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportTarget, setExportTarget] = useState<{connId: string, tableName: string} | null>(null);

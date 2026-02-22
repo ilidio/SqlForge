@@ -12,7 +12,7 @@ import { IndexAdvisor } from './IndexAdvisor';
 import { VisualExplain } from './VisualExplain';
 import { BenchmarkDialog } from './BenchmarkDialog';
 import { AiActionsMenu, type AiTask } from './AiActionsMenu';
-import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, Wand2, History, Clock } from 'lucide-react';
+import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, History, Clock } from 'lucide-react';
 import Editor, { useMonaco } from '@monaco-editor/react';
 
 interface Props {
@@ -111,7 +111,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
 
       // Register completion provider
       monaco.languages.registerCompletionItemProvider('sql', {
-        provideCompletionItems: (model, position) => {
+        provideCompletionItems: (model: any, position: any) => {
           const word = model.getWordUntilPosition(position);
           const range = {
             startLineNumber: position.lineNumber,
@@ -167,7 +167,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     } catch (e: any) {
         toast.error("Explain failed: " + e.message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -385,7 +385,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
               <Input 
                 type="password"
                 placeholder="••••••••••••••••••••"
-                className="h-6 text-[10px] w-48 bg-transparent border-dashed border-muted-foreground/30 focus-visible:border-primary/50"
+                className="h-6 text-[10px] w-48 bg-transparent border-dashed border-muted-foreground/30 focus-visible:ring-primary/50"
                 value={apiKey}
                 onChange={e => saveApiKey(e.target.value)}
               />
@@ -395,7 +395,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
               </div>
               <Input 
                 placeholder="e.g. gemini-1.5-flash"
-                className="h-6 text-[10px] w-36 bg-transparent border-dashed border-muted-foreground/30 focus-visible:border-primary/50"
+                className="h-6 text-[10px] w-36 bg-transparent border-dashed border-muted-foreground/30 focus-visible:ring-primary/50"
                 value={aiModel}
                 onChange={e => saveAiModel(e.target.value)}
               />

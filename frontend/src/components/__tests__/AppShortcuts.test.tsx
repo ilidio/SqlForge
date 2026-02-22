@@ -19,6 +19,20 @@ vi.mock('../../api', () => ({
   api: {
     getConnections: vi.fn().mockResolvedValue([]),
     getHistory: vi.fn().mockResolvedValue([]),
+    getFavorites: vi.fn().mockResolvedValue([]),
+    getConnectionsHealth: vi.fn().mockResolvedValue({}),
+    getTables: vi.fn().mockResolvedValue([]),
+    testConnection: vi.fn().mockResolvedValue({ success: true, message: "Connected" }),
+    deleteConnection: vi.fn().mockResolvedValue({}),
+    deleteAllConnections: vi.fn().mockResolvedValue({}),
+    dropObject: vi.fn().mockResolvedValue({}),
+    listWorkspaces: vi.fn().mockResolvedValue([]),
+    loadWorkspace: vi.fn().mockResolvedValue({ content: { nodes: [], edges: [], modelLevel: 'physical' }, id: '1', name: 'Test' }),
+    saveWorkspace: vi.fn().mockResolvedValue({ id: '1' }),
+    deleteWorkspace: vi.fn().mockResolvedValue({}),
+    getSchemaDetails: vi.fn().mockResolvedValue([]),
+    runBatchQueries: vi.fn().mockResolvedValue({ results: [] }),
+    visualDiff: vi.fn().mockResolvedValue({ sql_text: '', statements: [] }),
   }
 }));
 

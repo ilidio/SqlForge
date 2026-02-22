@@ -5,7 +5,6 @@ import { api, type TableSchema } from '../api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Book, Download, Search, Filter, Database, Key, Table as TableIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface DataDictionaryProps {
@@ -157,7 +156,7 @@ Generated on ${new Date().toLocaleString()}
                                                         <tr key={col.name} className="hover:bg-muted/30 transition-colors">
                                                             <td className="p-2.5 font-medium flex items-center gap-2">
                                                                 {col.name}
-                                                                {col.primary_key && <Key size={10} className="text-amber-500" title="Primary Key" />}
+                                                                {col.primary_key && <Key size={10} className="text-amber-500" />}
                                                             </td>
                                                             <td className="p-2.5 font-mono text-[10px] text-muted-foreground">{col.type}</td>
                                                             <td className="p-2.5">{col.nullable ? 'YES' : 'NO'}</td>
