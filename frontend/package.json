@@ -89,6 +89,15 @@
       "preload.js",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "directories": {
       "buildResources": "assets"
     }

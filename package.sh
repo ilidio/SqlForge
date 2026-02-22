@@ -104,6 +104,9 @@ TARGET_ARCH=${2:-$DEFAULT_ARCH}
 
 echo "Building for Target OS: $TARGET_OS, Target Architecture: $TARGET_ARCH"
 
+# Build the backend executable first
+./scripts/build_backend.sh
+
 # Navigate to the frontend directory
 pushd frontend > /dev/null
 
