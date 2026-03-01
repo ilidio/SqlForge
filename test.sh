@@ -11,13 +11,13 @@ sleep 5
 
 echo ""
 echo "--- Running Backend Tests ---"
-cd backend
+cd SqlForge-Backend
 PYTHONPATH=. venv/bin/python -m pytest tests/
 cd ..
 
 echo ""
-echo "--- Running Frontend Tests ---"
-cd frontend
+echo "--- Running SqlForge Tests ---"
+cd SqlForge
 npm test
 cd ..
 

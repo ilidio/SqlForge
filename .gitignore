@@ -5,28 +5,55 @@ Thumbs.db
 # Logs
 *.out
 *.log
-backend.out
-frontend.out
+SqlForge-Backend.out
+SqlForge.out
 
 # Python
 venv/
 .venv/
-backend/venv/
-backend/.venv/
+SqlForge-Backend/venv/
+SqlForge-Backend/.venv/
 **/__pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
-backend/.pytest_cache/
+SqlForge-Backend/.pytest_cache/
 
 # Node
 node_modules/
+SqlForge/node_modules/
+SqlForge/dist/
 frontend/node_modules/
 frontend/dist/
 
 # Databases
+SqlForge-Backend/*.db
 backend/*.db
 *.db-journal
+
+# Build Artifacts
+# Current structure
+SqlForge-Backend/build/
+SqlForge-Backend/dist/
+SqlForge/resources/bin/
+SqlForge/assets/build/
+SqlForge/out/
+SqlForge/dist/
+
+# Legacy structure (to prevent accidental re-addition)
+backend/build/
+backend/dist/
+frontend/resources/bin/
+frontend/assets/build/
+frontend/out/
+frontend/dist/
+
+# Executables/Binaries
+# (Already covered by folder ignores above)
+*.app/
+*.exe
+*.pkg
+*.dmg
 
 # Editor settings
 .vscode/

@@ -71,16 +71,32 @@ generate_icons() {
   # Generate PNGs for various sizes from the base PNG using magick
   magick assets/build/icons/base_icon.png -resize 16x16 assets/build/icons/icon_16x16.png
   magick assets/build/icons/base_icon.png -resize 32x32 assets/build/icons/icon_32x32.png
+  magick assets/build/icons/base_icon.png -resize 48x48 assets/build/icons/icon_48x48.png
   magick assets/build/icons/base_icon.png -resize 64x64 assets/build/icons/icon_64x64.png
   magick assets/build/icons/base_icon.png -resize 128x128 assets/build/icons/icon_128x128.png
   magick assets/build/icons/base_icon.png -resize 256x256 assets/build/icons/icon_256x256.png
   magick assets/build/icons/base_icon.png -resize 512x512 assets/build/icons/icon_512x512.png
   magick assets/build/icons/base_icon.png -resize 1024x1024 assets/build/icons/icon_1024x1024.png
   
+  # Generate icon.png as a generic fallback
+  cp assets/build/icons/icon_256x256.png assets/build/icons/icon.png
+
   # Generate .icns for macOS from the base PNG
   magick assets/build/icons/base_icon.png -format icns assets/build/icons/icon.icns
   if [ $? -ne 0 ]; then
     echo "Warning: .icns generation using magick failed or is not optimal. Ensure ImageMagick is properly configured."
+  fi
+
+  # Generate .ico for Windows from the PNGs
+  magick assets/build/icons/icon_16x16.png \
+         assets/build/icons/icon_32x32.png \
+         assets/build/icons/icon_48x48.png \
+         assets/build/icons/icon_64x64.png \
+         assets/build/icons/icon_128x128.png \
+         assets/build/icons/icon_256x256.png \
+         assets/build/icons/icon.ico
+  if [ $? -ne 0 ]; then
+    echo "Warning: .ico generation using magick failed. Ensure ImageMagick is properly configured."
   fi
 
   echo "Icon generation complete."
@@ -105,10 +121,10 @@ TARGET_ARCH=${2:-$DEFAULT_ARCH}
 echo "Building for Target OS: $TARGET_OS, Target Architecture: $TARGET_ARCH"
 
 # Build the backend executable first
-./scripts/build_backend.sh
+./scripts/build_backend.sh "$TARGET_OS"
 
-# Navigate to the frontend directory
-pushd frontend > /dev/null
+# Navigate to the SqlForge directory
+pushd SqlForge > /dev/null
 
 # Clean previous build artifacts
 echo "Cleaning previous build artifacts..."
@@ -118,7 +134,7 @@ rm -rf dist out
 generate_icons
 
 # Install dependencies (if not already installed)
-echo "Installing frontend dependencies (if necessary)..."
+echo "Installing SqlForge dependencies (if necessary)..."
 npm install
 
 # Build the React frontend
@@ -176,15 +192,15 @@ if [ $BUILD_EXIT_CODE -ne 0 ]; then
 fi
 
 echo "Build complete!"
-echo "Generated installer files (usually in frontend/dist/):"
+echo "Generated installer files (usually in SqlForge/dist/):"
 case "$TARGET_OS" in
   win)
-    ls -l frontend/dist/*.exe frontend/dist/*.msi 2>/dev/null || echo "  No Windows installers found."
+    ls -l SqlForge/dist/*.exe SqlForge/dist/*.msi 2>/dev/null || echo "  No Windows installers found."
     ;;
   mac)
-    ls -l frontend/dist/*.dmg frontend/dist/*.pkg 2>/dev/null || echo "  No macOS installers found."
+    ls -l SqlForge/dist/*.dmg SqlForge/dist/*.pkg 2>/dev/null || echo "  No macOS installers found."
     ;;
   linux)
-    ls -l frontend/dist/*.AppImage frontend/dist/*.deb frontend/dist/*.rpm 2>/dev/null || echo "  No Linux installers found."
+    ls -l SqlForge/dist/*.AppImage SqlForge/dist/*.deb SqlForge/dist/*.rpm 2>/dev/null || echo "  No Linux installers found."
     ;;
 esac

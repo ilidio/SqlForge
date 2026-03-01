@@ -1,3 +1,3 @@
 #!/bin/bash
-cd frontend
+cd SqlForge
 npm run dev

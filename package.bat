@@ -43,22 +43,25 @@ if "%TARGET_ARCH%"=="" set "TARGET_ARCH=x64"
 
 echo Building for Target OS: Windows, Target Architecture: %TARGET_ARCH%
 
-REM Navigate to the frontend directory
-pushd frontend
+REM Build the backend executable first
+call scripts\build_backend.bat
+
+REM Navigate to the SqlForge directory
+pushd SqlForge
 
 REM Clean previous build artifacts
 echo Cleaning previous build artifacts...
 rd /s /q dist out 2>nul
 
-REM Ensure icons directory exists for electron-builder
+REM Ensure icons directory exists for electron-builder (if buildResources not working as expected)
 if not exist "build\icons" mkdir "build\icons"
 
 REM Install dependencies (if not already installed)
-echo Installing frontend dependencies (if necessary)...
+echo Installing SqlForge dependencies (if necessary)...
 call npm install
 
-REM Build the React frontend
-echo Building React frontend...
+REM Build the React app
+echo Building React app...
 call npm run build
 
 REM Construct and execute the electron-builder command
@@ -77,5 +80,5 @@ REM Navigate back to the original directory
 popd
 
 echo Build complete!
-echo Generated installer files (usually in frontend\dist\):
-dir frontend\dist\*.exe frontend\dist\*.msi 2>nul || echo   No Windows installers found.
+echo Generated installer files (usually in SqlForge\dist\):
+dir SqlForge\dist\*.exe SqlForge\dist\*.msi 2>nul || echo   No Windows installers found.
