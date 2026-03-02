@@ -70,8 +70,13 @@ if %errorlevel% neq 0 (
   exit /b %errorlevel%
 )
 
+REM Construct the architecture flag for electron-builder
+set "ARCH_FLAG=--x64"
+if /i "%TARGET_ARCH%"=="arm64" set "ARCH_FLAG=--arm64"
+if /i "%TARGET_ARCH%"=="ia32" set "ARCH_FLAG=--ia32"
+
 REM Construct and execute the electron-builder command
-set "BUILDER_CMD=npx electron-builder --win --arch %TARGET_ARCH%"
+set "BUILDER_CMD=npx electron-builder --win %ARCH_FLAG%"
 
 echo Step 5: Packaging Electron App...
 echo Executing: %BUILDER_CMD%
