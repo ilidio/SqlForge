@@ -58,10 +58,15 @@ jobs:
       run: |
         brew install librsvg imagemagick
 
-    - name: Run Build Script
+    - name: Run Build Script (Windows)
+      if: runner.os == 'Windows'
       run: ${{ matrix.script }}
-      shell: bash {0}
-      # Note: 'bash {0}' allows running the script string correctly on all platforms in GH Actions
+      shell: cmd
+
+    - name: Run Build Script (macOS/Linux)
+      if: runner.os != 'Windows'
+      run: ${{ matrix.script }}
+      shell: bash
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

@@ -59,45 +59,58 @@ generate_icons() {
   echo "Generating application icons from public/logo.svg..."
   mkdir -p assets/build/icons
 
-  # Use rsvg-convert to create a high-resolution base PNG from the SVG
-  RSVG_CONVERT_CMD="/opt/homebrew/bin/rsvg-convert -w 1024 -h 1024 public/logo.svg -o assets/build/icons/base_icon.png"
-  echo "Executing: $RSVG_CONVERT_CMD"
-  eval "$RSVG_CONVERT_CMD"
-  if [ $? -ne 0 ]; then
-    echo "Error: rsvg-convert failed to generate base PNG. Is librsvg installed?"
+  # Find rsvg-convert
+  RSVG_CONVERT=$(which rsvg-convert)
+  if [ -z "$RSVG_CONVERT" ]; then
+    echo "Error: rsvg-convert not found. Is librsvg2-bin or librsvg installed?"
     exit 1
   fi
 
-  # Generate PNGs for various sizes from the base PNG using magick
-  magick assets/build/icons/base_icon.png -resize 16x16 assets/build/icons/icon_16x16.png
-  magick assets/build/icons/base_icon.png -resize 32x32 assets/build/icons/icon_32x32.png
-  magick assets/build/icons/base_icon.png -resize 48x48 assets/build/icons/icon_48x48.png
-  magick assets/build/icons/base_icon.png -resize 64x64 assets/build/icons/icon_64x64.png
-  magick assets/build/icons/base_icon.png -resize 128x128 assets/build/icons/icon_128x128.png
-  magick assets/build/icons/base_icon.png -resize 256x256 assets/build/icons/icon_256x256.png
-  magick assets/build/icons/base_icon.png -resize 512x512 assets/build/icons/icon_512x512.png
-  magick assets/build/icons/base_icon.png -resize 1024x1024 assets/build/icons/icon_1024x1024.png
+  # Use rsvg-convert to create a high-resolution base PNG from the SVG
+  echo "Executing: $RSVG_CONVERT -w 1024 -h 1024 public/logo.svg -o assets/build/icons/base_icon.png"
+  "$RSVG_CONVERT" -w 1024 -h 1024 public/logo.svg -o assets/build/icons/base_icon.png
+  if [ $? -ne 0 ]; then
+    echo "Error: rsvg-convert failed to generate base PNG."
+    exit 1
+  fi
+
+  # Find magick or fallback to convert (ImageMagick v6)
+  MAGICK=$(which magick)
+  if [ -z "$MAGICK" ]; then
+    MAGICK=$(which convert)
+  fi
+
+  if [ -z "$MAGICK" ]; then
+    echo "Error: ImageMagick (magick or convert) not found."
+    exit 1
+  fi
+
+  echo "Using ImageMagick command: $MAGICK"
+
+  # Generate PNGs for various sizes from the base PNG
+  "$MAGICK" assets/build/icons/base_icon.png -resize 16x16 assets/build/icons/icon_16x16.png
+  "$MAGICK" assets/build/icons/base_icon.png -resize 32x32 assets/build/icons/icon_32x32.png
+  "$MAGICK" assets/build/icons/base_icon.png -resize 48x48 assets/build/icons/icon_48x48.png
+  "$MAGICK" assets/build/icons/base_icon.png -resize 64x64 assets/build/icons/icon_64x64.png
+  "$MAGICK" assets/build/icons/base_icon.png -resize 128x128 assets/build/icons/icon_128x128.png
+  "$MAGICK" assets/build/icons/base_icon.png -resize 256x256 assets/build/icons/icon_256x256.png
+  "$MAGICK" assets/build/icons/base_icon.png -resize 512x512 assets/build/icons/icon_512x512.png
+  "$MAGICK" assets/build/icons/base_icon.png -resize 1024x1024 assets/build/icons/icon_1024x1024.png
   
   # Generate icon.png as a generic fallback
   cp assets/build/icons/icon_256x256.png assets/build/icons/icon.png
 
   # Generate .icns for macOS from the base PNG
-  magick assets/build/icons/base_icon.png -format icns assets/build/icons/icon.icns
-  if [ $? -ne 0 ]; then
-    echo "Warning: .icns generation using magick failed or is not optimal. Ensure ImageMagick is properly configured."
-  fi
+  "$MAGICK" assets/build/icons/base_icon.png -format icns assets/build/icons/icon.icns 2>/dev/null || echo "Warning: .icns generation failed."
 
   # Generate .ico for Windows from the PNGs
-  magick assets/build/icons/icon_16x16.png \
+  "$MAGICK" assets/build/icons/icon_16x16.png \
          assets/build/icons/icon_32x32.png \
          assets/build/icons/icon_48x48.png \
          assets/build/icons/icon_64x64.png \
          assets/build/icons/icon_128x128.png \
          assets/build/icons/icon_256x256.png \
-         assets/build/icons/icon.ico
-  if [ $? -ne 0 ]; then
-    echo "Warning: .ico generation using magick failed. Ensure ImageMagick is properly configured."
-  fi
+         assets/build/icons/icon.ico 2>/dev/null || echo "Warning: .ico generation failed."
 
   echo "Icon generation complete."
 }
@@ -179,7 +192,7 @@ case "$TARGET_ARCH" in
 esac
 
 echo "Executing: $BUILDER_CMD"
-NODE_GYP_FORCE_PYTHON=/Users/ilidiomartins/miniconda3/bin/python3 eval "$BUILDER_CMD"
+eval "$BUILDER_CMD"
 
 BUILD_EXIT_CODE=$?
 
