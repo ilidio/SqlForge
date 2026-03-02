@@ -1,0 +1,70 @@
+name: Build Multi-Platform Installers
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+            script: .\package.bat x64
+            artifact_path: SqlForge/dist/*.exe
+          - os: macos-latest
+            arch: arm64
+            script: ./package.sh mac arm64
+            artifact_path: SqlForge/dist/*.dmg
+          - os: ubuntu-latest
+            arch: x64
+            script: ./package.sh linux x64
+            artifact_path: SqlForge/dist/*.AppImage
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r SqlForge-Backend/requirements.txt
+        pip install pyinstaller
+
+    - name: Set up Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: SqlForge/package-lock.json
+
+    - name: Install System Dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libarchive-tools librsvg2-bin imagemagick
+
+    - name: Install System Dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install librsvg imagemagick
+
+    - name: Run Build Script
+      run: ${{ matrix.script }}
+      shell: bash {0}
+      # Note: 'bash {0}' allows running the script string correctly on all platforms in GH Actions
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SqlForge-${{ matrix.os }}-${{ matrix.arch }}
+        path: ${{ matrix.artifact_path }}
