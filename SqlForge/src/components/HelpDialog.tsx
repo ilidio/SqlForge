@@ -175,30 +175,39 @@ export default function HelpDialog({ open, onOpenChange, initialTab = 'shortcuts
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="about" className="mt-0 flex flex-col items-center justify-center py-8 text-center">
-                            <Logo size={80} className="mb-6" />
-                            <p className="text-sm text-muted-foreground mt-1">Version 1.0.0 (Stable)</p>
-                            <p className="text-xs text-muted-foreground mt-6 max-w-sm">
+                        <TabsContent value="about" className="mt-0 flex flex-col items-center justify-center py-6 text-center">
+                            <Logo size={100} className="mb-6" />
+                            <p className="text-sm font-medium text-foreground mt-1">Version 1.0.0 (Stable)</p>
+                            <p className="text-xs text-muted-foreground mt-4 max-w-sm">
                                 A modern, open-source database client inspired by the classics, 
                                 built for speed and AI-native productivity.
                             </p>
-                            <div className="flex gap-4 mt-8">
+                            <div className="flex gap-3 mt-6">
                                 <Button 
-                                    variant="ghost" 
+                                    variant="outline" 
                                     size="sm" 
-                                    className="gap-2"
+                                    className="gap-2 h-8"
                                     onClick={() => window.open('https://github.com/ilidio/SqlForge', '_blank')}
                                 >
                                     <Github size={14} /> GitHub
                                 </Button>
                                 <Button 
-                                    variant="ghost" 
+                                    variant="outline" 
                                     size="sm" 
-                                    className="gap-2"
+                                    className="gap-2 h-8"
                                     onClick={() => window.open('https://github.com/ilidio/SqlForge', '_blank')}
                                 >
                                     <ExternalLink size={14} /> Website
                                 </Button>
+                            </div>
+
+                            <div className="mt-12 flex flex-col items-center border-t w-full pt-8 px-8 bg-muted/20">
+                                <span className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase mb-4">
+                                    A Product of
+                                </span>
+                                <div className="flex items-center gap-3 grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer opacity-70 hover:opacity-100">
+                                    <img src="m0k4_tools.png" alt="M0K4 TOOLS" className="h-10 object-contain" />
+                                </div>
                             </div>
                         </TabsContent>
                     </div>
