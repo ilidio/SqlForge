@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build for ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       fail-fast: false
       matrix:
@@ -27,10 +29,10 @@ jobs:
             artifact_path: SqlForge/dist/*.AppImage
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Python 3.10
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.10'
 
@@ -40,10 +42,10 @@ jobs:
         pip install -r SqlForge-Backend/requirements.txt
         pip install pyinstaller
 
-    - name: Set up Node.js 20
-      uses: actions/setup-node@v4
+    - name: Set up Node.js 24
+      uses: actions/setup-node@v6
       with:
-        node-version: '20'
+        node-version: '24'
         cache: 'npm'
         cache-dependency-path: SqlForge/package-lock.json
 
@@ -69,7 +71,7 @@ jobs:
       shell: bash
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: SqlForge-${{ matrix.os }}-${{ matrix.arch }}
         path: ${{ matrix.artifact_path }}
