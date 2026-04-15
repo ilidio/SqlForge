@@ -66,9 +66,18 @@ jobs:
       run: ${{ matrix.script }}
       shell: cmd
 
+    - name: List dist content (Windows)
+      if: runner.os == 'Windows'
+      run: dir SqlForge\dist /s
+      shell: cmd
+
     - name: Run Build Script (macOS/Linux)
       if: runner.os != 'Windows'
       run: ${{ matrix.script }}
+      shell: bash
+
+    - name: List dist content
+      run: ls -R SqlForge/dist
       shell: bash
 
     - name: Upload Artifact
