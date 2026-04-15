@@ -2,7 +2,7 @@
   "name": "sqlforge",
   "main": "electron.cjs",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "SqlForge: A comprehensive SQL client and toolkit.",
   "author": "Your Name/Organization <you@example.com>",
   "homepage": "./",
