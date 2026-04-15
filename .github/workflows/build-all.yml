@@ -19,7 +19,7 @@ jobs:
           - os: windows-latest
             arch: x64
             script: .\package.bat x64
-            artifact_path: SqlForge/dist/*.exe
+            artifact_path: SqlForge/dist/SqlForge*.exe
           - os: macos-latest
             arch: arm64
             script: ./package.sh mac arm64
@@ -76,6 +76,7 @@ jobs:
       with:
         name: SqlForge-${{ matrix.os }}-${{ matrix.arch }}
         path: ${{ matrix.artifact_path }}
+        if-no-files-found: error
 
   release:
     name: Create GitHub Release
@@ -90,6 +91,9 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
