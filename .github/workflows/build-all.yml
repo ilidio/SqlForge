@@ -21,6 +21,14 @@ jobs:
             arch: x64
             script: .\package.bat x64
             artifact_path: SqlForge/dist/SqlForge*.exe
+          - os: windows-11-arm
+            arch: arm64
+            script: .\package.bat arm64
+            artifact_path: SqlForge/dist/SqlForge*.exe
+          - os: macos-13
+            arch: x64
+            script: ./package.sh mac x64
+            artifact_path: SqlForge/dist/*.dmg
           - os: macos-latest
             arch: arm64
             script: ./package.sh mac arm64
@@ -28,6 +36,10 @@ jobs:
           - os: ubuntu-latest
             arch: x64
             script: ./package.sh linux x64
+            artifact_path: SqlForge/dist/*.AppImage
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            script: ./package.sh linux arm64
             artifact_path: SqlForge/dist/*.AppImage
 
     steps:
@@ -37,6 +49,7 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: '3.10'
+        architecture: ${{ matrix.arch }}
 
     - name: Install Python dependencies
       run: |
