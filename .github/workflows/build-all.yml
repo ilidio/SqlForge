@@ -20,27 +20,45 @@ jobs:
           - os: windows-latest
             arch: x64
             script: .\package.bat x64
-            artifact_path: SqlForge/dist/SqlForge*.exe
+            artifact_path: |
+              SqlForge/dist/*.exe
+              SqlForge/dist/*.blockmap
+              SqlForge/dist/*.yml
           - os: windows-11-arm
             arch: arm64
             script: .\package.bat arm64
-            artifact_path: SqlForge/dist/SqlForge*.exe
+            artifact_path: |
+              SqlForge/dist/*.exe
+              SqlForge/dist/*.blockmap
+              SqlForge/dist/*.yml
           - os: macos-13
             arch: x64
             script: ./package.sh mac x64
-            artifact_path: SqlForge/dist/*.dmg
+            artifact_path: |
+              SqlForge/dist/*.dmg
+              SqlForge/dist/*.blockmap
+              SqlForge/dist/*.yml
           - os: macos-latest
             arch: arm64
             script: ./package.sh mac arm64
-            artifact_path: SqlForge/dist/*.dmg
+            artifact_path: |
+              SqlForge/dist/*.dmg
+              SqlForge/dist/*.blockmap
+              SqlForge/dist/*.yml
           - os: ubuntu-latest
             arch: x64
             script: ./package.sh linux x64
-            artifact_path: SqlForge/dist/*.AppImage
+            artifact_path: |
+              SqlForge/dist/*.AppImage
+              SqlForge/dist/*.deb
+              SqlForge/dist/*.yml
           - os: ubuntu-24.04-arm
             arch: arm64
             script: ./package.sh linux arm64
-            artifact_path: SqlForge/dist/*.AppImage
+            artifact_path: |
+              SqlForge/dist/*.AppImage
+              SqlForge/dist/*.deb
+              SqlForge/dist/*.yml
 
     steps:
     - uses: actions/checkout@v6
@@ -68,7 +86,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libarchive-tools librsvg2-bin imagemagick
+        sudo apt-get install -y libarchive-tools librsvg2-bin imagemagick unixodbc-dev freetds-dev
 
     - name: Install System Dependencies (macOS)
       if: runner.os == 'macOS'
