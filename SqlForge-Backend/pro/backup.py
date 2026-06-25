@@ -101,11 +101,29 @@ def backup_database(config: ConnectionConfig, output_dir: str = BACKUP_DIR, incr
                 report["file_path"] = mongo_path
                 
             elif config.type == 'sqlite':
-                # SQLite is just a file copy
+                if incremental:
+                    # Incremental backups require row-level filtering — use logical JSON path
+                    inc_folder = os.path.join(output_dir, f"{config.name}_{timestamp}_incremental")
+                    os.makedirs(inc_folder, exist_ok=True)
+                    return logical_json_backup(config, inc_folder, incremental=True)
+                # Full backup: fast binary file copy
                 import shutil
                 sqlite_path = os.path.join(backup_folder, "backup.db")
                 shutil.copy2(config.filepath, sqlite_path)
                 report["file_path"] = sqlite_path
+                # Populate tables list so callers can inspect what was backed up
+                try:
+                    tables = database.get_tables(config)
+                    report["tables"] = [t.name for t in tables if t.type == 'table']
+                except Exception:
+                    report["tables"] = []
+                # Write metadata for incremental backup tracking (same as logical_json_backup)
+                metadata_path = os.path.join(output_dir, f"metadata_{config.id}.json")
+                current_backup_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with open(metadata_path, "w") as f:
+                    json.dump({"last_backup_time": current_backup_iso}, f)
+                report["incremental"] = incremental
+                report["last_backup_time"] = None  # full backup has no prior reference
             
             elif config.type == 'redis':
                 # Redis uses SAVE command or copies rdb file
@@ -137,14 +155,18 @@ def logical_json_backup(config: ConnectionConfig, backup_path: str, incremental:
             last_backup_time = json.load(f).get("last_backup_time")
 
     current_backup_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    report = {"status": "success", "tables": []}
+
+    report = {"status": "success", "tables": [], "incremental": incremental, "last_backup_time": last_backup_time}
     try:
         tables = database.get_tables(config)
         for table in tables:
             if table.type != 'table': continue
             file_path = os.path.join(backup_path, f"{table.name}.json")
-            generator = database.stream_export_data(config, table.name, file_format="json")
+            # Apply incremental filter: only export rows modified since the last backup
+            where_clause = None
+            if incremental and last_backup_time:
+                where_clause = f"updated_at > '{last_backup_time}'"
+            generator = database.stream_export_data(config, table.name, file_format="json", where_clause=where_clause)
             with open(file_path, "w") as f:
                 for chunk in generator: f.write(chunk)
             report["tables"].append(table.name)

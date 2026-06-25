@@ -247,7 +247,13 @@ def run_query_benchmark(request: Dict[str, Any]):
 
 @app.post("/query/batch")
 def run_batch_queries(request: Dict[str, Any]):
-    # ... (existing code)
+    conn_id = request.get("connection_id")
+    operations = request.get("operations", [])
+
+    config = internal_db.get_connection(conn_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
     results = database.execute_batch_mutations(config, operations)
     return {"results": results}
 

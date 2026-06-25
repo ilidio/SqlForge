@@ -1,12 +1,9 @@
 import pytest
-from internal_db import init_db, save_connection, get_connections, add_history, get_history
+from internal_db import init_db, save_connection, get_connections, add_history, get_history, DB_PATH
 from models import ConnectionConfig
 from monitor.manager import MonitorManager
 import os
 import sqlite3
-
-# Use a temporary DB for internal tests
-DB_PATH = "sqlforge_metadata.db"
 
 @pytest.fixture(autouse=True)
 def clean_metadata():

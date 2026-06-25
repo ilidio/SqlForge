@@ -110,14 +110,19 @@ export function QueryBuilder({ connectionId, onRunQuery }: QueryBuilderProps) {
     })));
   }, [selectedColumns, handleColumnToggle, setNodes]);
 
+  const initializedRef = useState(false);
+  const hasInitialized = initializedRef[0];
+  const setHasInitialized = initializedRef[1];
+
   const fetchSchema = useCallback(async () => {
     setLoading(true);
     try {
       const schemas: TableSchema[] = await api.getSchemaDetails(connectionId);
       setAvailableTables(schemas);
       
-      // Initialize with a few tables if empty
-      if (nodes.length === 0 && schemas.length > 0) {
+      // Initialize with a few tables if empty (only once)
+      if (!hasInitialized && schemas.length > 0) {
+          setHasInitialized(true);
           // Add first table automatically
           const t1 = schemas[0];
           const initialNode = {
@@ -138,11 +143,11 @@ export function QueryBuilder({ connectionId, onRunQuery }: QueryBuilderProps) {
     } finally {
       setLoading(false);
     }
-  }, [connectionId, setNodes, handleColumnToggle, nodes.length]);
+  }, [connectionId, setNodes, handleColumnToggle, hasInitialized, setHasInitialized]);
 
   useEffect(() => {
     fetchSchema();
-  }, [fetchSchema]);
+  }, [connectionId]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true, label: 'JOIN' },eds)),

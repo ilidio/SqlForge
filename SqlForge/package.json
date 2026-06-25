@@ -2,7 +2,7 @@
   "name": "sqlforge",
   "main": "electron.cjs",
   "private": true,
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "SqlForge: A comprehensive SQL client and toolkit.",
   "author": "Your Name/Organization <you@example.com>",
   "homepage": "./",
@@ -69,7 +69,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^5.4.0",
-    "vitest": "^4.0.17"
+    "vitest": "^2.1.0"
   },
   "overrides": {
     "vite": "^5.4.0",
