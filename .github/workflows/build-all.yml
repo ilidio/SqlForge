@@ -45,20 +45,6 @@ jobs:
               SqlForge/dist/*.dmg
               SqlForge/dist/*.blockmap
               SqlForge/dist/*.yml
-          - os: ubuntu-latest
-            arch: x64
-            script: ./package.sh linux x64
-            artifact_path: |
-              SqlForge/dist/*.AppImage
-              SqlForge/dist/*.deb
-              SqlForge/dist/*.yml
-          - os: ubuntu-24.04-arm
-            arch: arm64
-            script: ./package.sh linux arm64
-            artifact_path: |
-              SqlForge/dist/*.AppImage
-              SqlForge/dist/*.deb
-              SqlForge/dist/*.yml
 
     steps:
     - uses: actions/checkout@v4
