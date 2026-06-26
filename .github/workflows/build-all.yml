@@ -31,13 +31,6 @@ jobs:
               SqlForge/dist/*.exe
               SqlForge/dist/*.blockmap
               SqlForge/dist/*.yml
-          - os: macos-13
-            arch: x64
-            script: ./package.sh mac x64
-            artifact_path: |
-              SqlForge/dist/*.dmg
-              SqlForge/dist/*.blockmap
-              SqlForge/dist/*.yml
           - os: macos-latest
             arch: arm64
             script: ./package.sh mac arm64
