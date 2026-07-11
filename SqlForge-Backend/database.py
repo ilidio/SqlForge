@@ -10,6 +10,9 @@ import io
 import shlex
 from sshtunnel import SSHTunnelForwarder
 import time
+import threading
+import hashlib
+from typing import Dict, Set
 from pro import masking
 
 # --- SSH TUNNEL MANAGER ---
@@ -84,9 +87,32 @@ def get_connection_url(config: ConnectionConfig, local_port: int = None) -> str:
         return f"oracle+oracledb://{config.username}:{config.password}@{host}:{port}/?service_name={config.database}"
     return ""
 
+# get_engine() used to call create_engine() on every single query, which
+# throws away the connection pool immediately after using it once - under
+# any real load that means a brand new TCP + auth handshake per query and
+# rapid exhaustion of the target DB's max_connections. Engines are now
+# cached and reused; see dispose_engine()/dispose_all_engines() for how the
+# cache is invalidated when a connection is edited or removed.
+_engine_cache_lock = threading.Lock()
+_engine_cache: Dict[str, Engine] = {}
+_engine_cache_keys_by_conn_id: Dict[str, Set[str]] = {}
+
+
+def _engine_cache_key(config: ConnectionConfig, local_port: int = None) -> str:
+    # Includes every field that changes the resulting connection URL/pool so
+    # editing a connection (new password, new host, ...) transparently misses
+    # the cache and builds a fresh engine, rather than reusing stale creds.
+    parts = [
+        config.type, config.host or "", str(config.port or ""),
+        config.username or "", config.password or "", config.database or "",
+        config.filepath or "", str(local_port or ""),
+    ]
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+
 def get_engine(config: ConnectionConfig, **kwargs) -> Engine:
     local_port = None
-    
+
     # Handle SSH Tunnel
     if config.ssh and config.ssh.enabled:
         tunnel = tunnel_manager.get_tunnel(config)
@@ -94,16 +120,74 @@ def get_engine(config: ConnectionConfig, **kwargs) -> Engine:
             local_port = tunnel.local_bind_port
             print(f"Using SSH Tunnel: 127.0.0.1:{local_port} -> {config.host}:{config.port}")
 
+    # Callers that pass extra create_engine kwargs (e.g. a one-off isolation
+    # level) want a dedicated engine, not a shared cached one.
+    if kwargs:
+        url = get_connection_url(config, local_port)
+        connect_args = {}
+        if config.type == 'postgresql':
+            connect_args = {"connect_timeout": 5}
+        elif config.type == 'mysql':
+            connect_args = {"connect_timeout": 5}
+        return create_engine(url, connect_args=connect_args, pool_pre_ping=True, **kwargs)
+
+    cache_key = _engine_cache_key(config, local_port)
+    with _engine_cache_lock:
+        cached = _engine_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     url = get_connection_url(config, local_port)
-    
-    # Add connect_args for timeout where possible
     connect_args = {}
     if config.type == 'postgresql':
         connect_args = {"connect_timeout": 5}
     elif config.type == 'mysql':
         connect_args = {"connect_timeout": 5}
-    
-    return create_engine(url, connect_args=connect_args, pool_pre_ping=True, **kwargs)
+
+    engine = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+
+    with _engine_cache_lock:
+        # Guard against a concurrent request having built the same engine
+        # while we were connecting; keep whichever landed first so we never
+        # leak a duplicate pool.
+        existing = _engine_cache.get(cache_key)
+        if existing is not None:
+            engine.dispose()
+            return existing
+        _engine_cache[cache_key] = engine
+        if config.id:
+            _engine_cache_keys_by_conn_id.setdefault(config.id, set()).add(cache_key)
+
+    return engine
+
+
+def dispose_engine(conn_id: str) -> None:
+    """Disposes and drops any cached engine(s) associated with a connection
+    id. Call this whenever a connection's config is edited or deleted so a
+    stale engine (old password, old host, ...) can't be reused."""
+    if not conn_id:
+        return
+    with _engine_cache_lock:
+        keys = _engine_cache_keys_by_conn_id.pop(conn_id, set())
+        engines = [_engine_cache.pop(k, None) for k in keys]
+    for engine in engines:
+        if engine is not None:
+            try:
+                engine.dispose()
+            except Exception:
+                pass
+
+
+def dispose_all_engines() -> None:
+    with _engine_cache_lock:
+        engines = list(_engine_cache.values())
+        _engine_cache.clear()
+        _engine_cache_keys_by_conn_id.clear()
+    for engine in engines:
+        try:
+            engine.dispose()
+        except Exception:
+            pass
 
 def get_schema_context(config: ConnectionConfig) -> str:
     if config.type == 'redis':

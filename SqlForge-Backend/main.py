@@ -105,16 +105,21 @@ def save_connection(config: ConnectionConfig):
         config.database = "default"
         
     internal_db.save_connection(config)
+    # Drop any cached engine for this id - if this was an edit (new host,
+    # password, etc.) the old pooled connection is now stale.
+    database.dispose_engine(config.id)
     return config
 
 @app.delete("/connections/{conn_id}")
 def delete_connection_endpoint(conn_id: str):
     internal_db.delete_connection(conn_id)
+    database.dispose_engine(conn_id)
     return {"status": "deleted"}
 
 @app.delete("/connections")
 def delete_all_connections_endpoint():
     internal_db.delete_all_connections()
+    database.dispose_all_engines()
     return {"status": "all deleted"}
 
 @app.get("/connections/discover")
