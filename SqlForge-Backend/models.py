@@ -26,6 +26,17 @@ class QueryRequest(BaseModel):
     sql: str
     analyze: bool = False
 
+class TranslateQueryRequest(BaseModel):
+    sql: str
+    target_type: str  # a ConnectionConfig.type value, e.g. 'postgresql', 'mysql'
+    source_type: Optional[str] = None  # omit to let sqlglot auto-detect the source dialect
+
+class TranslateQueryResult(BaseModel):
+    sql: str
+    error: Optional[str] = None
+    source_dialect: str
+    target_dialect: str
+
 class TableInfo(BaseModel):
     name: str
     db_schema: Optional[str] = None
