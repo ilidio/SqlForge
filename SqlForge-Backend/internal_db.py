@@ -5,6 +5,7 @@ import sys
 from models import ConnectionConfig
 from typing import List, Dict, Any
 from datetime import datetime
+import crypto_utils
 
 def get_data_dir():
     if sys.platform == 'win32':
@@ -111,12 +112,31 @@ def delete_model_workspace(workspace_id: str):
     conn.commit()
     conn.close()
 
+def _encrypt_secrets(config: ConnectionConfig) -> ConnectionConfig:
+    """Returns a copy of config with password fields encrypted, ready to persist."""
+    payload = config.model_copy(deep=True)
+    if payload.password:
+        payload.password = crypto_utils.encrypt_value(payload.password)
+    if payload.ssh and payload.ssh.password:
+        payload.ssh.password = crypto_utils.encrypt_value(payload.ssh.password)
+    return payload
+
+def _decrypt_secrets(config: ConnectionConfig) -> ConnectionConfig:
+    """Returns config with password fields decrypted, ready to use."""
+    if config.password:
+        config.password = crypto_utils.decrypt_value(config.password)
+    if config.ssh and config.ssh.password:
+        config.ssh.password = crypto_utils.decrypt_value(config.ssh.password)
+    return config
+
 def save_connection(config: ConnectionConfig):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # Serialize the full config to JSON for flexible storage
+    # Serialize the full config to JSON for flexible storage. Passwords are
+    # encrypted at rest - see crypto_utils.py.
+    payload = _encrypt_secrets(config)
     c.execute("INSERT OR REPLACE INTO connections (id, name, type, config) VALUES (?, ?, ?, ?)",
-              (config.id, config.name, config.type, config.model_dump_json()))
+              (payload.id, payload.name, payload.type, payload.model_dump_json()))
     conn.commit()
     conn.close()
 
@@ -126,7 +146,7 @@ def get_connections() -> List[ConnectionConfig]:
     c.execute("SELECT config FROM connections")
     rows = c.fetchall()
     conn.close()
-    return [ConnectionConfig.model_validate_json(row[0]) for row in rows]
+    return [_decrypt_secrets(ConnectionConfig.model_validate_json(row[0])) for row in rows]
 
 def get_connection(conn_id: str) -> ConnectionConfig | None:
     conn = sqlite3.connect(DB_PATH)
@@ -135,7 +155,7 @@ def get_connection(conn_id: str) -> ConnectionConfig | None:
     row = c.fetchone()
     conn.close()
     if row:
-        return ConnectionConfig.model_validate_json(row[0])
+        return _decrypt_secrets(ConnectionConfig.model_validate_json(row[0]))
     return None
 
 def delete_connection(conn_id: str):
