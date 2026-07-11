@@ -73,6 +73,7 @@ export const MenuBar: React.FC<MenuProps> = ({ onAction, hasActiveTab, activeTab
                 { label: 'Data Transfer...', icon: <Database size={14}/>, onClick: () => onAction?.('data_transfer'), disabled: !hasConnections },
                 { label: 'Data Synchronization...', onClick: () => onAction?.('data_sync'), disabled: !hasConnections },
                 { label: 'Structure Synchronization...', onClick: () => onAction?.('struct_sync'), disabled: !hasConnections },
+                { label: 'Federated Query...', icon: <Zap size={14}/>, onClick: () => onAction?.('federated_query'), disabled: !hasConnections },
                 { divider: true },
                 { label: 'Data Dictionary...', icon: <Book size={14}/>, onClick: () => onAction?.('open_dictionary'), disabled: !hasSelectedConnection },
                 { divider: true },

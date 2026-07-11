@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 import time
 
 # Import from local modules
-from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest
+from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest, FederatedQueryRequest, FederatedQueryResult
 import database
 import internal_db
 from google import genai
@@ -19,6 +19,7 @@ from pro import refactorer
 from pro import generator
 from pro import scheduler
 from pro import briefing
+from pro import federated as pro_federated
 from monitor import locks
 from monitor.health import HealthAuditor
 from monitor.manager import MonitorManager
@@ -221,6 +222,12 @@ def run_query(query: QueryRequest):
     internal_db.add_history(query.connection_id, query.sql, duration_ms, status)
     
     return result
+
+@app.post("/query/federated", response_model=FederatedQueryResult)
+def run_federated_query_endpoint(request: FederatedQueryRequest):
+    return pro_federated.run_federated_query(
+        [s.model_dump() for s in request.sources], request.query, request.max_rows
+    )
 
 @app.post("/query/explain")
 def explain_query(query: QueryRequest):

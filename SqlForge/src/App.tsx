@@ -14,6 +14,7 @@ import { CommandPalette } from './components/CommandPalette';
 import SettingsDialog from './components/SettingsDialog';
 import HelpDialog from './components/HelpDialog';
 import SyncWizard from './components/SyncWizard';
+import FederatedQueryDialog from './components/FederatedQueryDialog';
 import BackupWizard from './components/BackupWizard';
 import ExportWizard from './components/ExportWizard';
 import ImportWizard from './components/ImportWizard';
@@ -56,6 +57,7 @@ function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
+  const [isFederatedQueryOpen, setIsFederatedQueryOpen] = useState(false);
   const [syncMode, setSyncMode] = useState<'structure' | 'data' | 'transfer'>('structure');
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [backupMode, setBackupMode] = useState<'backup' | 'restore' | 'execute'>('backup');
@@ -609,6 +611,7 @@ function App() {
               if (action === 'data_transfer') { setSyncMode('transfer'); setIsSyncOpen(true); }
               if (action === 'data_sync') { setSyncMode('data'); setIsSyncOpen(true); }
               if (action === 'struct_sync') { setSyncMode('structure'); setIsSyncOpen(true); }
+              if (action === 'federated_query') setIsFederatedQueryOpen(true);
 
               if (action === 'backup') { setBackupMode('backup'); setIsBackupOpen(true); }
               if (action === 'restore') { setBackupMode('restore'); setIsBackupOpen(true); }
@@ -846,10 +849,15 @@ function App() {
         initialTab={helpTab}
       />
 
-      <SyncWizard 
-        open={isSyncOpen} 
-        onOpenChange={setIsSyncOpen} 
+      <SyncWizard
+        open={isSyncOpen}
+        onOpenChange={setIsSyncOpen}
         mode={syncMode}
+      />
+
+      <FederatedQueryDialog
+        open={isFederatedQueryOpen}
+        onOpenChange={setIsFederatedQueryOpen}
       />
 
       <BackupWizard 

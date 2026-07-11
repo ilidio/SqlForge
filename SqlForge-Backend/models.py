@@ -58,6 +58,23 @@ class QueryResult(BaseModel):
     rows: List[Dict[str, Any]]
     error: Optional[str] = None
 
+class FederatedSource(BaseModel):
+    alias: str  # referenced as a table name inside the federated `query`
+    connection_id: str
+    sql: str  # the pull query run against this connection via the normal /query path
+
+class FederatedQueryRequest(BaseModel):
+    sources: List[FederatedSource]
+    query: str  # DuckDB SQL, may reference every source's alias (e.g. a JOIN across them)
+    max_rows: Optional[int] = None
+
+class FederatedQueryResult(BaseModel):
+    columns: List[str]
+    rows: List[Dict[str, Any]]
+    error: Optional[str] = None
+    truncated: bool = False
+    source_summaries: List[Dict[str, Any]] = []
+
 class AIRequest(BaseModel):
     connection_id: str
     prompt: str
