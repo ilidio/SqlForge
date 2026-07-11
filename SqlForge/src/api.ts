@@ -12,6 +12,8 @@ export interface ConnectionConfig {
   password?: string;
   database: string;
   filepath?: string;
+  environment?: 'development' | 'staging' | 'production' | null;
+  read_only?: boolean;
 }
 
 export interface ForeignKeyInfo {
