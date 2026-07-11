@@ -25,6 +25,11 @@ class QueryRequest(BaseModel):
     connection_id: str
     sql: str
     analyze: bool = False
+    query_id: Optional[str] = None  # client-generated id, lets /query/cancel abort this run
+    timeout_seconds: Optional[float] = None  # overrides the server default statement timeout
+
+class CancelQueryRequest(BaseModel):
+    query_id: str
 
 class TableInfo(BaseModel):
     name: str

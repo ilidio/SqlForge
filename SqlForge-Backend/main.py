@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 import time
 
 # Import from local modules
-from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest
+from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest, CancelQueryRequest
 import database
 import internal_db
 from google import genai
@@ -214,13 +214,18 @@ def run_query(query: QueryRequest):
         raise HTTPException(status_code=404, detail="Connection not found")
     
     start_time = time.time()
-    result = database.execute_query(config, query.sql)
+    result = database.execute_query(config, query.sql, query_id=query.query_id, timeout_seconds=query.timeout_seconds)
     duration_ms = (time.time() - start_time) * 1000
-    
+
     status = "error" if result.get("error") else "success"
     internal_db.add_history(query.connection_id, query.sql, duration_ms, status)
-    
+
     return result
+
+@app.post("/query/cancel")
+def cancel_query_endpoint(request: CancelQueryRequest):
+    cancelled = database.cancel_query(request.query_id)
+    return {"success": cancelled}
 
 @app.post("/query/explain")
 def explain_query(query: QueryRequest):

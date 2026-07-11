@@ -122,7 +122,8 @@ export const api = {
       // Return the direct URL for streaming
       return `${API_URL}/connections/${connId}/export/${tableName}?format=${format}&masked=${masked}`;
   },
-  runQuery: (connId: string, sql: string) => axios.post<{columns: string[], rows: Record<string, unknown>[], error: string | null}>(`${API_URL}/query`, { connection_id: connId, sql }).then(r => r.data),
+  runQuery: (connId: string, sql: string, queryId?: string, timeoutSeconds?: number) => axios.post<{columns: string[], rows: Record<string, unknown>[], error: string | null}>(`${API_URL}/query`, { connection_id: connId, sql, query_id: queryId, timeout_seconds: timeoutSeconds }).then(r => r.data),
+  cancelQuery: (queryId: string) => axios.post<{success: boolean}>(`${API_URL}/query/cancel`, { query_id: queryId }).then(r => r.data),
   runBatchQueries: (connId: string, operations: any[]) => axios.post<{results: {success: boolean, error: string | null}[]}>(`${API_URL}/query/batch`, { connection_id: connId, operations: operations }).then(r => r.data),
   getHistory: () => axios.get<{id: string, connection_id: string, sql: string, status: string, timestamp: string, duration_ms: number}[]>(`${API_URL}/history`).then(r => r.data),
   generateSQL: (connId: string, prompt: string, apiKey: string, model: string) => axios.post<{sql: string}>(`${API_URL}/ai/generate`, { connection_id: connId, prompt, api_key: apiKey, model }).then(r => r.data),

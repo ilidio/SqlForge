@@ -10,7 +10,61 @@ import io
 import shlex
 from sshtunnel import SSHTunnelForwarder
 import time
+import threading
+from typing import Any, Dict
 from pro import masking
+
+# A query with no explicit timeout still gets one, so a runaway statement
+# can't block a backend worker (and its DB connection) forever.
+DEFAULT_QUERY_TIMEOUT_SECONDS = 30
+
+# Tracks SQL queries currently executing on a worker thread so `/query/cancel`
+# can abort them from a different request. Keyed by the client-supplied
+# query_id. See register_active_connection/cancel_query below.
+_active_connections_lock = threading.Lock()
+_active_connections: Dict[str, Dict[str, Any]] = {}
+
+
+def register_active_connection(query_id: str, raw_conn) -> None:
+    if not query_id:
+        return
+    with _active_connections_lock:
+        _active_connections[query_id] = {"raw_conn": raw_conn, "cancelled": False}
+
+
+def unregister_active_connection(query_id: str) -> None:
+    if not query_id:
+        return
+    with _active_connections_lock:
+        _active_connections.pop(query_id, None)
+
+
+def cancel_query(query_id: str) -> bool:
+    """Best-effort cancellation for a running SQL query.
+
+    Closing the DBAPI connection a query is using makes the blocked driver
+    call raise inside its worker thread, which unblocks execute_query()
+    regardless of which SQL engine is in use - there's no single portable
+    'cancel' API across psycopg2/pymysql/pymssql/oracledb/sqlite3, but every
+    DBAPI connection supports close().
+    """
+    with _active_connections_lock:
+        entry = _active_connections.get(query_id)
+        if entry is None:
+            return False
+        entry["cancelled"] = True
+        raw_conn = entry["raw_conn"]
+    try:
+        raw_conn.close()
+    except Exception:
+        pass
+    return True
+
+
+def is_query_cancelled(query_id: str) -> bool:
+    with _active_connections_lock:
+        entry = _active_connections.get(query_id)
+        return bool(entry and entry["cancelled"])
 
 # --- SSH TUNNEL MANAGER ---
 
@@ -558,7 +612,7 @@ def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
         # If any operation fails, the 'with engine.begin()' block rolls back EVERYTHING
         return [{"success": False, "error": str(e)}]
 
-def execute_query(config: ConnectionConfig, query_str: str):
+def execute_query(config: ConnectionConfig, query_str: str, query_id: str = None, timeout_seconds: float = None):
     if config.type == 'redis':
         try:
             # Handle DB selection from query string if it matches DB[0-9]+
@@ -727,18 +781,54 @@ def execute_query(config: ConnectionConfig, query_str: str):
 
     # SQL
     engine = get_engine(config)
+    timeout = timeout_seconds if timeout_seconds and timeout_seconds > 0 else DEFAULT_QUERY_TIMEOUT_SECONDS
+    conn = engine.connect()
     try:
-        with engine.connect() as conn:
-            result = conn.execute(text(query_str))
-            if result.returns_rows:
-                columns = result.keys()
-                rows = [dict(row._mapping) for row in result]
-                return {"columns": list(columns), "rows": rows, "error": None}
-            else:
-                conn.commit()
-                return {"columns": [], "rows": [], "error": "Query executed successfully (no rows returned)"}
+        register_active_connection(query_id, conn.connection)
+        outcome: Dict[str, Any] = {}
+
+        def _run():
+            try:
+                outcome["result"] = conn.execute(text(query_str))
+            except Exception as e:
+                outcome["error"] = e
+
+        worker = threading.Thread(target=_run, daemon=True)
+        worker.start()
+        worker.join(timeout)
+
+        if worker.is_alive():
+            # The statement ran past its timeout - force-abort by closing
+            # the DBAPI connection, which raises inside the worker thread
+            # and frees it up. Give it a couple seconds to unwind.
+            try:
+                conn.connection.close()
+            except Exception:
+                pass
+            worker.join(2)
+            return {"columns": [], "rows": [], "error": f"Query timed out after {timeout:g}s and was cancelled", "truncated": False}
+
+        if "error" in outcome:
+            raise outcome["error"]
+
+        result = outcome["result"]
+        if result.returns_rows:
+            columns = result.keys()
+            rows = [dict(row._mapping) for row in result]
+            return {"columns": list(columns), "rows": rows, "error": None}
+        else:
+            conn.commit()
+            return {"columns": [], "rows": [], "error": "Query executed successfully (no rows returned)"}
     except Exception as e:
+        if query_id and is_query_cancelled(query_id):
+            return {"columns": [], "rows": [], "error": "Query was cancelled"}
         return {"columns": [], "rows": [], "error": str(e)}
+    finally:
+        unregister_active_connection(query_id)
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes, file_format: str, mode: str = 'append'):
     def get_rows():
