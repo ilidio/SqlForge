@@ -214,7 +214,7 @@ def run_query(query: QueryRequest):
         raise HTTPException(status_code=404, detail="Connection not found")
     
     start_time = time.time()
-    result = database.execute_query(config, query.sql)
+    result = database.execute_query(config, query.sql, max_rows=query.max_rows)
     duration_ms = (time.time() - start_time) * 1000
     
     status = "error" if result.get("error") else "success"

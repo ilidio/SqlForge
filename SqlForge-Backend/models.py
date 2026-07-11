@@ -25,6 +25,7 @@ class QueryRequest(BaseModel):
     connection_id: str
     sql: str
     analyze: bool = False
+    max_rows: Optional[int] = None  # caps the result set; server default applies if omitted
 
 class TableInfo(BaseModel):
     name: str
@@ -57,6 +58,8 @@ class QueryResult(BaseModel):
     columns: List[str]
     rows: List[Dict[str, Any]]
     error: Optional[str] = None
+    truncated: bool = False
+    row_limit: Optional[int] = None
 
 class AIRequest(BaseModel):
     connection_id: str

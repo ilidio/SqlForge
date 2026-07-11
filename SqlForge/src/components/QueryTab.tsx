@@ -35,7 +35,7 @@ export interface QueryTabHandle {
 export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '', onSqlChange }, ref) => {
   const [sql, setSql] = useState(initialSql);
   const resultsTableRef = useRef<ResultsTableHandle>(null);
-  const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null} | null>(null);
+  const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null, truncated?: boolean, row_limit?: number} | null>(null);
   const [loading, setLoading] = useState(false);
   const [withAnalyze, setWithAnalyze] = useState(false);
   const [history, setHistory] = useState<{sql: string, timestamp: number}[]>([]);
@@ -145,6 +145,11 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
       setResult(res);
       if (!res.error) {
           saveToHistory(sql);
+          if (res.truncated) {
+              toast.warning(`Result truncated to the first ${res.row_limit ?? res.rows.length} rows`, {
+                  description: 'Add a LIMIT/WHERE clause to page through the rest.',
+              });
+          }
       }
     } catch (e: unknown) {
       setResult({ columns: [], rows: [], error: e instanceof Error ? e.message : String(e) });
