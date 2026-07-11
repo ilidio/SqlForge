@@ -3,7 +3,7 @@ import json
 import redis
 from pymongo import MongoClient
 from sqlalchemy import text, inspect
-from database import get_engine
+from database import get_engine, validate_identifier
 from models import ConnectionConfig
 
 logger = logging.getLogger(__name__)
@@ -41,9 +41,10 @@ def get_data_from_source(config: ConnectionConfig, table_name: str, limit: int =
         return rows
 
     # SQL
+    validate_identifier(table_name, "table name")
     engine = get_engine(config)
     with engine.connect() as conn:
-        result = conn.execute(text(f"SELECT * FROM {table_name} LIMIT {limit}"))
+        result = conn.execute(text(f"SELECT * FROM {table_name} LIMIT {int(limit)}"))
         return [dict(row._mapping) for row in result]
 
 def write_data_to_target(config: ConnectionConfig, table_name: str, rows: list[dict]):
@@ -75,11 +76,14 @@ def write_data_to_target(config: ConnectionConfig, table_name: str, rows: list[d
         return len(rows)
 
     # SQL
+    validate_identifier(table_name, "table name")
     engine = get_engine(config)
     columns = list(rows[0].keys())
     # SQL tables don't like MongoDB's _id or Redis specific keys usually
     columns = [c for c in columns if c not in ['_id', '_key']]
-    
+    for col in columns:
+        validate_identifier(col, "column name")
+
     placeholders = ", ".join([f":{col}" for col in columns])
     insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
     
