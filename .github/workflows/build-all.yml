@@ -4,14 +4,55 @@ on:
   push:
     branches: [ "main", "master" ]
     tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r SqlForge-Backend/requirements.txt
+
+      - name: Run backend tests
+        working-directory: SqlForge-Backend
+        env:
+          PYTHONPATH: .
+        run: pytest tests/ -q
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: SqlForge/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: SqlForge
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: SqlForge
+        run: npm test -- --run
+
   build:
     name: Build for ${{ matrix.os }} (${{ matrix.arch }})
+    needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
