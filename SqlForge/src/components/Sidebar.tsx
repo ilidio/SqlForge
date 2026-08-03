@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { 
     ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent 
 } from '@/components/ui/context-menu';
-import { type LucideIcon, Moon, Sun, Edit2, Trash2, Copy, Database as DbIcon, Download, Info, Workflow, X, Upload, Layout } from 'lucide-react';
+import { type LucideIcon, Moon, Sun, Edit2, Trash2, Copy, Database as DbIcon, Download, Info, Workflow, X, Upload, Layout, Lock } from 'lucide-react';
 import { useTheme } from '@/lib/ThemeContext';
 import { toast } from 'sonner';
 
@@ -293,10 +293,22 @@ export const Sidebar: React.FC<Props> = ({
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col">
-                                                <span className={cn(
-                                                    "truncate text-xs leading-none",
-                                                    isSelected ? "font-bold" : "font-medium"
-                                                )}>{conn.name}</span>
+                                                <span className="flex items-center gap-1.5 min-w-0">
+                                                    <span className={cn(
+                                                        "truncate text-xs leading-none",
+                                                        isSelected ? "font-bold" : "font-medium"
+                                                    )}>{conn.name}</span>
+                                                    {conn.environment === 'production' && (
+                                                        <span className="shrink-0 px-1 py-px rounded text-[8px] font-bold uppercase tracking-wide bg-rose-500/15 text-rose-500 border border-rose-500/20" title="Production connection">
+                                                            Prod
+                                                        </span>
+                                                    )}
+                                                    {conn.read_only && (
+                                                        <span className="shrink-0 text-muted-foreground" title="Read-only: mutating statements are blocked">
+                                                            <Lock size={9} />
+                                                        </span>
+                                                    )}
+                                                </span>
                                                 {conn.type === 'sqlite' && conn.filepath && (
                                                     <span className="truncate text-[9px] text-muted-foreground/60 font-mono mt-0.5" title={conn.filepath}>
                                                         {conn.filepath.split('/').pop()}

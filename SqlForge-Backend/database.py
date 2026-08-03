@@ -112,6 +112,50 @@ def is_query_cancelled(query_id: str) -> bool:
         entry = _active_connections.get(query_id)
         return bool(entry and entry["cancelled"])
 
+# --- READ-ONLY CONNECTION GUARD ---
+#
+# ConnectionConfig.read_only (models.py) lets a user flag a connection -
+# typically production - so SqlForge refuses to run anything that could
+# mutate it, even if the UI itself would never normally send such a
+# statement (a stray paste into the query editor, a scripted /query call,
+# etc). This is enforced here in the backend rather than only in the UI,
+# since the UI is explicitly documented as stateless about connections
+# (CLAUDE.md: "Backend owns state").
+_MUTATING_SQL_KEYWORDS = {
+    "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "CREATE",
+    "REPLACE", "MERGE", "GRANT", "REVOKE", "ATTACH", "DETACH", "VACUUM",
+}
+
+
+def _leading_sql_keyword(sql: str) -> str:
+    stripped = (sql or "").strip()
+    # Skip leading comments so `-- note\nDELETE ...` is still caught.
+    while True:
+        if stripped.startswith("--"):
+            newline = stripped.find("\n")
+            stripped = stripped[newline + 1:].strip() if newline != -1 else ""
+        elif stripped.startswith("/*"):
+            end = stripped.find("*/")
+            stripped = stripped[end + 2:].strip() if end != -1 else ""
+        else:
+            break
+    match = re.match(r'[A-Za-z]+', stripped)
+    return match.group(0).upper() if match else ""
+
+
+def is_mutating_sql(sql: str) -> bool:
+    return _leading_sql_keyword(sql) in _MUTATING_SQL_KEYWORDS
+
+
+READ_ONLY_ERROR = "This connection is marked read-only. Turn off read-only mode on the connection to run mutating statements."
+
+
+def read_only_block(config: ConnectionConfig) -> bool:
+    """True if this config is flagged read-only. Kept as a tiny wrapper
+    (rather than inlining `config.read_only`) so every call site reads the
+    same way and is easy to grep for."""
+    return bool(getattr(config, "read_only", False))
+
 # --- SSH TUNNEL MANAGER ---
 
 class TunnelManager:
@@ -578,6 +622,8 @@ def get_schema_details(config: ConnectionConfig) -> list[TableSchema]:
     return schemas
 
 def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
+    if read_only_block(config):
+        return {"success": False, "error": READ_ONLY_ERROR}
     try:
         if config.type == 'redis':
             host = config.host
@@ -627,6 +673,8 @@ def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
         return {"success": False, "error": str(e)}
 
 def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
+    if read_only_block(config):
+        return [{"success": False, "error": READ_ONLY_ERROR}]
     if config.type == 'redis':
         try:
             host = config.host
@@ -810,8 +858,14 @@ def execute_query(config: ConnectionConfig, query_str: str, max_rows: int = None
                 keys = r.keys(pattern)
                 rows = [{"key": k, "type": r.type(k)} for k in keys]
                 return {"columns": ["key", "type"], "rows": rows, "error": None}
-            
-            # Support generic Redis commands
+
+            # Support generic Redis commands - but not on a read-only
+            # connection, since we can't enumerate every Redis write command
+            # (SET/DEL/FLUSHDB/EXPIRE/...) to selectively allow only reads
+            # the way the SQL branch below can via its leading-keyword check.
+            if read_only_block(config):
+                return {"columns": [], "rows": [], "error": READ_ONLY_ERROR}
+
             res = r.execute_command(*parts)
             
             # Format result for the grid
@@ -920,6 +974,9 @@ def execute_query(config: ConnectionConfig, query_str: str, max_rows: int = None
              return {"columns": [], "rows": [], "error": str(e)}
 
     # SQL
+    if read_only_block(config) and is_mutating_sql(query_str):
+        return {"columns": [], "rows": [], "error": READ_ONLY_ERROR}
+
     engine = get_engine(config)
     timeout = timeout_seconds if timeout_seconds and timeout_seconds > 0 else DEFAULT_QUERY_TIMEOUT_SECONDS
     conn = engine.connect()
@@ -978,6 +1035,9 @@ def execute_query(config: ConnectionConfig, query_str: str, max_rows: int = None
             pass
 
 def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes, file_format: str, mode: str = 'append'):
+    if read_only_block(config):
+        return {"success": False, "error": READ_ONLY_ERROR}
+
     def get_rows():
         if file_format == 'csv' or file_format == 'txt':
             content_str = file_contents.decode('utf-8')
@@ -1318,6 +1378,8 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
     return generate()
 
 def alter_table(config: ConnectionConfig, request: AlterTableRequest):
+    if read_only_block(config):
+        return {"success": False, "error": READ_ONLY_ERROR}
     if config.type == 'redis':
         try:
             host = config.host

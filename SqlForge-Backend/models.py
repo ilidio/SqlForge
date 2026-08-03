@@ -20,6 +20,8 @@ class ConnectionConfig(BaseModel):
     database: Optional[str] = None
     filepath: Optional[str] = None # For SQLite
     ssh: Optional[SSHConfig] = None
+    environment: Optional[str] = None  # e.g. 'development', 'staging', 'production' - UI hint only
+    read_only: bool = False  # when true, the backend rejects mutating statements on this connection
 
 class QueryRequest(BaseModel):
     connection_id: str

@@ -5,7 +5,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+
+const ENVIRONMENTS: { id: NonNullable<ConnectionConfig['environment']>, label: string, dotClass: string }[] = [
+  { id: 'development', label: 'Development', dotClass: 'bg-emerald-500' },
+  { id: 'staging', label: 'Staging', dotClass: 'bg-amber-500' },
+  { id: 'production', label: 'Production', dotClass: 'bg-rose-500' },
+];
 
 interface Props {
   isOpen: boolean;
@@ -23,7 +30,9 @@ export const ConnectionModal: React.FC<Props> = ({ isOpen, onClose, onSave, edit
     host: 'localhost',
     port: 5432,
     username: 'postgres',
-    password: ''
+    password: '',
+    environment: null,
+    read_only: false
   });
 
   const [discovering, setDiscovering] = useState(false);
@@ -59,7 +68,9 @@ export const ConnectionModal: React.FC<Props> = ({ isOpen, onClose, onSave, edit
             host: 'localhost',
             port: 5432,
             username: 'postgres',
-            password: ''
+            password: '',
+            environment: null,
+            read_only: false
         });
     }
   }, [editingConnection, isOpen]);
@@ -246,6 +257,52 @@ export const ConnectionModal: React.FC<Props> = ({ isOpen, onClose, onSave, edit
                 </div>
               </div>
             )}
+
+            <div className="grid gap-2">
+              <Label>Environment</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setConfig({ ...config, environment: null })}
+                  className={cn(
+                    "flex items-center justify-center p-2 rounded-md border text-[10px] font-medium transition-all",
+                    !config.environment
+                      ? "bg-primary/5 border-primary text-primary"
+                      : "bg-background border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
+                  )}
+                >
+                  None
+                </button>
+                {ENVIRONMENTS.map((env) => (
+                  <button
+                    key={env.id}
+                    onClick={() => setConfig({ ...config, environment: env.id, read_only: env.id === 'production' ? true : config.read_only })}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 p-2 rounded-md border text-[10px] font-medium transition-all",
+                      config.environment === env.id
+                        ? "bg-primary/5 border-primary text-primary"
+                        : "bg-background border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
+                    )}
+                  >
+                    <div className={cn("w-1.5 h-1.5 rounded-full", env.dotClass)} />
+                    {env.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex items-start gap-2.5 p-3 rounded-md border border-border bg-muted/20 cursor-pointer">
+              <Checkbox
+                checked={!!config.read_only}
+                onCheckedChange={(checked) => setConfig({ ...config, read_only: checked === true })}
+                className="mt-0.5"
+              />
+              <div className="grid gap-0.5">
+                <span className="text-xs font-semibold">Read-only</span>
+                <span className="text-[10px] text-muted-foreground">
+                  The server rejects INSERT/UPDATE/DELETE/DROP/ALTER and other mutating statements on this connection, even from a pasted query or the AI assistant.
+                </span>
+              </div>
+            </label>
           </div>
 
           {msg && (
