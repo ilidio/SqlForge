@@ -36,6 +36,7 @@ def _make_slow_engine(fake_raw_conn: _FakeRawConn, work_seconds: float = 5.0):
         row = MagicMock()
         row._mapping = {"n": 1}
         mock_result.__iter__.return_value = iter([row])
+        mock_result.fetchmany.return_value = [row]
         return mock_result
 
     mock_conn.execute.side_effect = _slow_execute
@@ -108,6 +109,7 @@ def test_execute_query_registers_and_unregisters_connection(mock_get_engine):
     row = MagicMock()
     row._mapping = {"n": 1}
     mock_result.__iter__.return_value = iter([row])
+    mock_result.fetchmany.return_value = [row]
     mock_conn.execute.return_value = mock_result
 
     mock_engine = MagicMock()
