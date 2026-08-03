@@ -37,6 +37,8 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   const resultsTableRef = useRef<ResultsTableHandle>(null);
   const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null, truncated?: boolean, row_limit?: number} | null>(null);
   const [loading, setLoading] = useState(false);
+  const activeQueryIdRef = useRef<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const [withAnalyze, setWithAnalyze] = useState(false);
   const [history, setHistory] = useState<{sql: string, timestamp: number}[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -138,10 +140,13 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   }, [monaco, fetchSchemaForAutocomplete]);
 
   const runQuery = async () => {
+    const queryId = crypto.randomUUID();
+    activeQueryIdRef.current = queryId;
+    setCancelling(false);
     setLoading(true);
     setViewMode('grid');
     try {
-      const res = await api.runQuery(connectionId, sql);
+      const res = await api.runQuery(connectionId, sql, undefined, queryId);
       setResult(res);
       if (!res.error) {
           saveToHistory(sql);
@@ -155,6 +160,19 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
       setResult({ columns: [], rows: [], error: e instanceof Error ? e.message : String(e) });
     } finally {
       setLoading(false);
+      setCancelling(false);
+      activeQueryIdRef.current = null;
+    }
+  };
+
+  const stopQuery = async () => {
+    if (!activeQueryIdRef.current) return;
+    setCancelling(true);
+    try {
+      await api.cancelQuery(activeQueryIdRef.current);
+    } catch (e: unknown) {
+      toast.error("Failed to cancel query: " + (e instanceof Error ? e.message : String(e)));
+      setCancelling(false);
     }
   };
 
@@ -567,15 +585,29 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                  </Button>
              </div>
 
-             <Button 
-                size="sm"
-                onClick={runQuery}
-                loading={loading && viewMode === 'grid'}
-                className="h-8 text-xs font-bold gap-1.5 px-4 shadow-sm ml-2"
-             >
-                <Play size={13} />
-                Execute
-             </Button>
+             {loading && viewMode === 'grid' ? (
+                 <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={stopQuery}
+                    disabled={cancelling}
+                    className="h-8 text-xs font-bold gap-1.5 px-4 shadow-sm ml-2"
+                    title="Cancel the running query"
+                 >
+                    <X size={13} />
+                    {cancelling ? 'Stopping…' : 'Stop'}
+                 </Button>
+             ) : (
+                 <Button
+                    size="sm"
+                    onClick={runQuery}
+                    loading={loading && viewMode === 'grid'}
+                    className="h-8 text-xs font-bold gap-1.5 px-4 shadow-sm ml-2"
+                 >
+                    <Play size={13} />
+                    Execute
+                 </Button>
+             )}
           </div>
         </div>
         
