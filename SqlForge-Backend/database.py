@@ -15,6 +15,11 @@ import hashlib
 from typing import Dict, Set
 from pro import masking
 
+# Ad-hoc query results are capped by default so a `SELECT *` on a huge table
+# can't load the whole result set into memory and freeze the UI. Callers can
+# override via QueryRequest.max_rows (see main.py's /query endpoint).
+DEFAULT_MAX_QUERY_ROWS = 5000
+
 # --- SSH TUNNEL MANAGER ---
 
 class TunnelManager:
@@ -642,7 +647,9 @@ def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
         # If any operation fails, the 'with engine.begin()' block rolls back EVERYTHING
         return [{"success": False, "error": str(e)}]
 
-def execute_query(config: ConnectionConfig, query_str: str):
+def execute_query(config: ConnectionConfig, query_str: str, max_rows: int = None):
+    limit = max_rows if max_rows and max_rows > 0 else DEFAULT_MAX_QUERY_ROWS
+
     if config.type == 'redis':
         try:
             # Handle DB selection from query string if it matches DB[0-9]+
@@ -794,18 +801,22 @@ def execute_query(config: ConnectionConfig, query_str: str):
                 count = db[col_name].count_documents(args)
                 return {"columns": ["count"], "rows": [{"count": count}], "error": None}
             else:
-                cursor = db[col_name].find(args).limit(50)
-            
+                cursor = db[col_name].find(args).limit(min(50, limit))
+
             rows = []
-            for doc in cursor:
+            truncated = False
+            for i, doc in enumerate(cursor):
+                if i >= limit:
+                    truncated = True
+                    break
                 doc['_id'] = str(doc['_id'])
                 rows.append(doc)
-            
+
             if not rows:
                 return {"columns": [], "rows": [], "error": f"No documents found in {db_name}.{col_name}"}
-            
+
             columns = list(rows[0].keys())
-            return {"columns": columns, "rows": rows, "error": None}
+            return {"columns": columns, "rows": rows, "error": None, "truncated": truncated, "row_limit": limit}
         except Exception as e:
              return {"columns": [], "rows": [], "error": str(e)}
 
@@ -816,8 +827,15 @@ def execute_query(config: ConnectionConfig, query_str: str):
             result = conn.execute(text(query_str))
             if result.returns_rows:
                 columns = result.keys()
-                rows = [dict(row._mapping) for row in result]
-                return {"columns": list(columns), "rows": rows, "error": None}
+                # Fetch one extra row beyond the cap so we can tell whether
+                # the result set was actually truncated, without ever
+                # materializing more than `limit + 1` rows in memory.
+                fetched = result.fetchmany(limit + 1)
+                truncated = len(fetched) > limit
+                if truncated:
+                    fetched = fetched[:limit]
+                rows = [dict(row._mapping) for row in fetched]
+                return {"columns": list(columns), "rows": rows, "error": None, "truncated": truncated, "row_limit": limit}
             else:
                 conn.commit()
                 return {"columns": [], "rows": [], "error": "Query executed successfully (no rows returned)"}

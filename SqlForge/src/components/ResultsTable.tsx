@@ -15,6 +15,8 @@ interface Props {
     columns: string[];
     rows: Record<string, unknown>[];
     error: string | null;
+    truncated?: boolean;
+    row_limit?: number;
   } | null;
   onRefresh?: () => void;
   onSelectKey?: (key: string) => void;
@@ -408,6 +410,12 @@ export const ResultsTable = forwardRef<ResultsTableHandle, Props>(({ connectionI
                   <span className="opacity-30">|</span>
                   <span className="font-bold text-foreground/70">{data.columns.length}</span> columns
               </div>
+              {data.truncated && (
+                  <div className="flex items-center gap-1 text-amber-500 border-l border-border/50 pl-4" title={`The server capped this result at ${data.row_limit ?? data.rows.length} rows to protect memory. Add a LIMIT/WHERE clause to see a different slice.`}>
+                      <AlertCircle size={11} />
+                      <span>Truncated to first {data.row_limit ?? data.rows.length} rows</span>
+                  </div>
+              )}
               <div className="flex items-center gap-2 border-l border-border/50 pl-4">
                   <span className="text-[9px] uppercase tracking-wider font-bold opacity-60">Page Size:</span>
                   <input 
