@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 import time
 
 # Import from local modules
-from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest, CancelQueryRequest
+from models import ConnectionConfig, QueryRequest, QueryResult, TableInfo, AIRequest, SyncRequest, TableSchema, AlterTableRequest, CancelQueryRequest, TranslateQueryRequest, TranslateQueryResult
 import database
 import internal_db
 from google import genai
@@ -231,6 +231,10 @@ def run_query(query: QueryRequest):
 def cancel_query_endpoint(request: CancelQueryRequest):
     cancelled = database.cancel_query(request.query_id)
     return {"success": cancelled}
+
+@app.post("/query/translate", response_model=TranslateQueryResult)
+def translate_query_endpoint(request: TranslateQueryRequest):
+    return pro_sync.translate_sql(request.sql, request.target_type, request.source_type)
 
 @app.post("/query/explain")
 def explain_query(query: QueryRequest):

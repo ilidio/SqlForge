@@ -15,6 +15,38 @@ def get_dialect(conn_type: str) -> str:
     }
     return mapping.get(conn_type, 'sqlite')
 
+def translate_sql(sql: str, target_type: str, source_type: str = None) -> dict:
+    """
+    Deterministically rewrites `sql` for a different SQL dialect using
+    sqlglot.transpile. This was previously only reachable indirectly through
+    the AI "convert" action (main.py's /ai/generate with task='convert'),
+    which is non-deterministic and can emit invalid SQL for anything
+    sqlglot could have translated exactly. sqlglot itself is already a
+    dependency (it powers the schema sync engine above), it just wasn't
+    exposed for ad-hoc queries.
+
+    source_type=None lets sqlglot auto-detect/parse generically, which
+    works for most standard SQL but is less precise than naming the source
+    engine explicitly.
+    """
+    source_dialect = get_dialect(source_type) if source_type else None
+    target_dialect = get_dialect(target_type)
+    try:
+        statements = transpile(sql, read=source_dialect, write=target_dialect, pretty=True)
+        return {
+            "sql": ";\n\n".join(statements),
+            "error": None,
+            "source_dialect": source_dialect or "auto",
+            "target_dialect": target_dialect,
+        }
+    except Exception as e:
+        return {
+            "sql": sql,
+            "error": str(e),
+            "source_dialect": source_dialect or "auto",
+            "target_dialect": target_dialect,
+        }
+
 def reflect_schema_to_sql(engine, dialect: str) -> str:
     """
     Reflects the database schema and generates a sequence of CREATE TABLE statements.

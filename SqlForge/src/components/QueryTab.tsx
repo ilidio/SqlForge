@@ -12,11 +12,20 @@ import { IndexAdvisor } from './IndexAdvisor';
 import { VisualExplain } from './VisualExplain';
 import { BenchmarkDialog } from './BenchmarkDialog';
 import { AiActionsMenu, type AiTask } from './AiActionsMenu';
-import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, History, Clock } from 'lucide-react';
+import { Play, Sparkles, Key, X, Download, Terminal, ChevronDown, FileJson, FileCode, FileSpreadsheet, Zap, Activity, BarChart2, History, Clock, Languages } from 'lucide-react';
 import Editor, { useMonaco } from '@monaco-editor/react';
+
+const TRANSLATE_TARGETS: { type: string, label: string }[] = [
+  { type: 'postgresql', label: 'PostgreSQL' },
+  { type: 'mysql', label: 'MySQL' },
+  { type: 'mssql', label: 'SQL Server' },
+  { type: 'oracle', label: 'Oracle' },
+  { type: 'sqlite', label: 'SQLite' },
+];
 
 interface Props {
   connectionId: string;
+  dbType?: string;
   initialSql?: string;
   onSqlChange?: (sql: string) => void;
 }
@@ -32,7 +41,7 @@ export interface QueryTabHandle {
   saveQuery: () => void;
 }
 
-export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initialSql = '', onSqlChange }, ref) => {
+export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, dbType, initialSql = '', onSqlChange }, ref) => {
   const [sql, setSql] = useState(initialSql);
   const resultsTableRef = useRef<ResultsTableHandle>(null);
   const [result, setResult] = useState<{columns: string[], rows: Record<string, unknown>[], error: string | null, truncated?: boolean, row_limit?: number} | null>(null);
@@ -50,6 +59,7 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
   const [aiModel, setAiModel] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [refactorLoading, setRefactorLoading] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [showBenchmark, setShowBenchmark] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'explain'>('grid');
@@ -294,6 +304,28 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
     }
   };
 
+  const translateDialect = async (targetType: string) => {
+    if (!sql.trim()) return;
+    setTranslating(true);
+    try {
+      const res = await api.translateQuery(sql, targetType, dbType);
+      if (res.error) {
+        toast.error("Couldn't translate deterministically: " + res.error, {
+          description: 'Try "Convert for Dialect" under AI Actions instead.',
+        });
+      } else {
+        setSql(res.sql);
+        toast.success(`Translated ${res.source_dialect} → ${res.target_dialect}`, {
+          description: 'Rewritten with sqlglot - no AI involved.',
+        });
+      }
+    } catch (e: unknown) {
+      toast.error("Translation failed: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const exportCSV = () => {
     if (!result || !result.rows || result.rows.length === 0) return;
     
@@ -449,11 +481,43 @@ export const QueryTab = forwardRef<QueryTabHandle, Props>(({ connectionId, initi
                 {(!apiKey || !aiModel) && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" title="AI not configured" />}
               </Button>
             )}
-            <AiActionsMenu 
-              onAction={performAiAction} 
+            <AiActionsMenu
+              onAction={performAiAction}
               loading={refactorLoading}
               disabled={!apiKey || !aiModel}
             />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={translating || !sql.trim()}
+                  className="h-8 text-xs gap-1.5"
+                  title="Rewrite this SQL for another engine using a deterministic parser (sqlglot) - no AI/API key needed"
+                >
+                  <Languages size={13} className={translating ? "animate-spin" : undefined} />
+                  Translate
+                  <ChevronDown size={12} className="opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1" align="end">
+                <div className="p-2 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Translate To
+                </div>
+                {TRANSLATE_TARGETS.map((t) => (
+                  <Button
+                    key={t.type}
+                    variant="ghost"
+                    size="sm"
+                    disabled={t.type === dbType}
+                    className="w-full justify-start font-normal text-xs h-8"
+                    onClick={() => translateDialect(t.type)}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="flex gap-2 mr-1 items-center">
              {result && result.rows && result.rows.length > 0 && (

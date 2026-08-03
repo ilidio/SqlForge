@@ -705,11 +705,12 @@ function App() {
             {activeTab ? (
               <>
                 {activeTab.type === 'query' && (
-                  <QueryTab 
+                  <QueryTab
                     key={activeTab.id}
                     ref={activeQueryTabRef}
-                    connectionId={activeTab.connectionId} 
-                    initialSql={activeTab.content} 
+                    connectionId={activeTab.connectionId}
+                    dbType={connections.find(c => c.id === activeTab.connectionId)?.type}
+                    initialSql={activeTab.content}
                     onSqlChange={(sql) => handleSqlChange(activeTab.id, sql)}
                   />
                 )}
