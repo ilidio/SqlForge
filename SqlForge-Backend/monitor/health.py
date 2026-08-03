@@ -43,6 +43,32 @@ class HealthAuditor:
                 risks.append(txn_risk)
                 score -= txn_risk['impact']
 
+        elif config.type == 'oracle':
+            # 1. Connection (session) Exhaustion
+            conn_risk = HealthAuditor._check_oracle_connections(config)
+            if conn_risk:
+                risks.append(conn_risk)
+                score -= conn_risk['impact']
+
+            # 2. Long Running Transactions
+            txn_risk = HealthAuditor._check_oracle_transactions(config)
+            if txn_risk:
+                risks.append(txn_risk)
+                score -= txn_risk['impact']
+
+        elif config.type == 'mssql':
+            # 1. Connection Exhaustion
+            conn_risk = HealthAuditor._check_mssql_connections(config)
+            if conn_risk:
+                risks.append(conn_risk)
+                score -= conn_risk['impact']
+
+            # 2. Long Running Transactions
+            txn_risk = HealthAuditor._check_mssql_transactions(config)
+            if txn_risk:
+                risks.append(txn_risk)
+                score -= txn_risk['impact']
+
         else:
             return {
                 "score": 100,
@@ -160,8 +186,8 @@ class HealthAuditor:
     @staticmethod
     def _check_mysql_transactions(config) -> Dict[str, Any]:
         query = """
-        SELECT count(*) 
-        FROM information_schema.innodb_trx 
+        SELECT count(*)
+        FROM information_schema.innodb_trx
         WHERE TIME_TO_SEC(TIMEDIFF(NOW(), trx_started)) > 300;
         """
         try:
@@ -169,6 +195,99 @@ class HealthAuditor:
             with engine.connect() as conn:
                 count = conn.execute(text(query)).scalar()
                 if count > 0:
+                    return {
+                        "type": "Transaction Age",
+                        "severity": "Critical",
+                        "description": f"Detected {count} transactions running for over 5 minutes.",
+                        "impact": 25
+                    }
+        except: pass
+        return None
+
+    @staticmethod
+    def _check_oracle_connections(config) -> Dict[str, Any]:
+        try:
+            engine = get_engine(config)
+            with engine.connect() as conn:
+                current = conn.execute(text("SELECT COUNT(*) FROM v$session WHERE type = 'USER'")).scalar()
+                max_sessions = conn.execute(text("SELECT value FROM v$parameter WHERE name = 'sessions'")).scalar()
+                max_sessions = int(max_sessions)
+                if max_sessions <= 0:
+                    return None
+                usage = current / max_sessions
+                if usage > 0.8:
+                    return {
+                        "type": "Connection Exhaustion",
+                        "severity": "High" if usage > 0.9 else "Medium",
+                        "description": f"Database is using {int(usage*100)}% of max sessions ({current}/{max_sessions}).",
+                        "impact": 20 if usage > 0.9 else 10
+                    }
+        except: pass
+        return None
+
+    @staticmethod
+    def _check_oracle_transactions(config) -> Dict[str, Any]:
+        # v$transaction.start_time is a text timestamp ('MM/DD/RR HH24:MI:SS');
+        # comparing against SYSDATE this way is the standard portable approach
+        # since START_SCN-based age requires extra privileges most app users
+        # won't have.
+        query = """
+        SELECT COUNT(*)
+        FROM v$transaction t
+        WHERE (SYSDATE - TO_DATE(t.start_time, 'MM/DD/RR HH24:MI:SS')) * 24 * 60 > 5
+        """
+        try:
+            engine = get_engine(config)
+            with engine.connect() as conn:
+                count = conn.execute(text(query)).scalar()
+                if count and count > 0:
+                    return {
+                        "type": "Transaction Age",
+                        "severity": "Critical",
+                        "description": f"Detected {count} transactions running for over 5 minutes.",
+                        "impact": 25
+                    }
+        except: pass
+        return None
+
+    @staticmethod
+    def _check_mssql_connections(config) -> Dict[str, Any]:
+        try:
+            engine = get_engine(config)
+            with engine.connect() as conn:
+                current = conn.execute(text("SELECT COUNT(*) FROM sys.dm_exec_sessions WHERE is_user_process = 1")).scalar()
+                max_conn = conn.execute(text("SELECT CAST(value_in_use AS INT) FROM sys.configurations WHERE name = 'user connections'")).scalar()
+                # SQL Server reports 0 for 'user connections' when it's left
+                # at its default (dynamically managed by available memory,
+                # not a fixed cap) - there's no fixed ceiling to compare
+                # against in that case, so skip the check rather than divide
+                # by zero or report a misleading 100% usage.
+                if not max_conn or max_conn <= 0:
+                    return None
+                usage = current / max_conn
+                if usage > 0.8:
+                    return {
+                        "type": "Connection Exhaustion",
+                        "severity": "High" if usage > 0.9 else "Medium",
+                        "description": f"Database is using {int(usage*100)}% of configured max user connections ({current}/{max_conn}).",
+                        "impact": 20 if usage > 0.9 else 10
+                    }
+        except: pass
+        return None
+
+    @staticmethod
+    def _check_mssql_transactions(config) -> Dict[str, Any]:
+        query = """
+        SELECT COUNT(*)
+        FROM sys.dm_tran_active_transactions at
+        JOIN sys.dm_tran_session_transactions st ON at.transaction_id = st.transaction_id
+        WHERE DATEDIFF(MINUTE, at.transaction_begin_time, GETDATE()) > 5
+        """
+        try:
+            engine = get_engine(config)
+            with engine.connect() as conn:
+                count = conn.execute(text(query)).scalar()
+                if count and count > 0:
                     return {
                         "type": "Transaction Age",
                         "severity": "Critical",
