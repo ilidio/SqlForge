@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from models import ConnectionConfig, TableInfo, ColumnInfo, ForeignKeyInfo, TableSchema, AlterTableRequest, ColumnDefinition, IndexInfo
 import os
+import re
 import redis
 from pymongo import MongoClient
 import csv
@@ -14,6 +15,45 @@ import threading
 import hashlib
 from typing import Any, Dict, Set
 from pro import masking
+
+# --- IDENTIFIER VALIDATION ---
+#
+# Table/column names can't be parameterized like values (there's no ":name"
+# placeholder for an identifier in SQLAlchemy's text()), so every DDL/DML
+# statement built by string-interpolating a table or column name is a
+# potential injection point if that name ever originates from a request
+# instead of a name SqlForge itself reflected from the schema. The helpers
+# below are used at every such interpolation site in this module,
+# pro/transfer.py and pro/sync.py.
+_IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+
+def validate_identifier(name: str, kind: str = "identifier") -> str:
+    """Raises ValueError unless `name` is a plain [A-Za-z_][A-Za-z0-9_]* token.
+
+    Deliberately conservative rather than trying to detect/escape hostile
+    input: a legitimate identifier with spaces or special characters would
+    need dialect-specific quoting we don't want to guess at, so it's
+    rejected the same as an actively malicious one.
+    """
+    if not isinstance(name, str) or not _IDENTIFIER_RE.match(name):
+        raise ValueError(
+            f"Invalid {kind}: {name!r}. Only letters, digits and underscores are allowed, and it can't start with a digit."
+        )
+    return name
+
+
+_ALLOWED_DROP_TYPES = {"TABLE", "VIEW", "INDEX", "TRIGGER", "SEQUENCE", "FUNCTION", "PROCEDURE"}
+
+
+def validate_drop_type(sql_type: str) -> str:
+    """Whitelists the SQL keyword used in `DROP <TYPE> <name>` - this isn't
+    an identifier (no quoting would help), so it's checked against a fixed
+    set of object types instead."""
+    normalized = (sql_type or "").strip().upper()
+    if normalized not in _ALLOWED_DROP_TYPES:
+        raise ValueError(f"Unsupported object type for DROP: {sql_type!r}")
+    return normalized
 
 # Ad-hoc query results are capped by default so a `SELECT *` on a huge table
 # can't load the whole result set into memory and freeze the UI. Callers can
@@ -575,8 +615,10 @@ def drop_object(config: ConnectionConfig, object_name: str, object_type: str):
     # Map UI types to SQL keywords
     sql_type = object_type.upper()
     if sql_type == 'COLLECTION': sql_type = 'TABLE' # Should not happen for SQL dialects
-    
+
     try:
+        sql_type = validate_drop_type(sql_type)
+        object_name = validate_identifier(object_name, "object name")
         with engine.begin() as conn:
             stmt = text(f"DROP {sql_type} {object_name}")
             conn.execute(stmt)
@@ -657,10 +699,14 @@ def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
         with engine.begin() as conn: # Automatically starts and commits/rolls back a transaction
             for op in operations:
                 op_type = op.get("type") # 'update' or 'delete'
-                table = op.get("table")
+                table = validate_identifier(op.get("table"), "table name")
                 data = op.get("data", {}) # New values for update
                 where = op.get("where", {}) # Conditions
-                
+                for col in data.keys():
+                    validate_identifier(col, "column name")
+                for col in where.keys():
+                    validate_identifier(col, "column name")
+
                 if op_type == 'insert':
                     columns = list(data.keys())
                     placeholders = ", ".join([f":{col}" for col in columns])
@@ -669,25 +715,25 @@ def execute_batch_mutations(config: ConnectionConfig, operations: list[dict]):
                 elif op_type == 'update':
                     set_clause = ", ".join([f"{col} = :{col}_val" for col in data.keys()])
                     where_clause = " AND ".join([
-                        f"{col} IS NULL" if val is None else f"{col} = :{col}_where" 
+                        f"{col} IS NULL" if val is None else f"{col} = :{col}_where"
                         for col, val in where.items()
                     ])
-                    
+
                     params = {f"{k}_val": v for k, v in data.items()}
                     params.update({f"{k}_where": v for k, v in where.items() if v is not None})
-                    
+
                     stmt = text(f"UPDATE {table} SET {set_clause} WHERE {where_clause}")
                     res = conn.execute(stmt, params)
                     if res.rowcount == 0:
                         raise Exception(f"Update failed: Row in {table} was modified or deleted by another user.")
-                        
+
                 elif op_type == 'delete':
                     where_clause = " AND ".join([
-                        f"{col} IS NULL" if val is None else f"{col} = :{col}_where" 
+                        f"{col} IS NULL" if val is None else f"{col} = :{col}_where"
                         for col, val in where.items()
                     ])
                     params = {f"{k}_where": v for k, v in where.items() if v is not None}
-                    
+
                     stmt = text(f"DELETE FROM {table} WHERE {where_clause}")
                     res = conn.execute(stmt, params)
                     if res.rowcount == 0:
@@ -1050,10 +1096,12 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
         row_gen = get_rows()
         total_imported = 0
         
+        table_name = validate_identifier(table_name, "table name")
+
         with engine.begin() as conn:
             if mode == 'truncate':
                 conn.execute(text(f"DELETE FROM {table_name}"))
-            
+
             while True:
                 batch = []
                 try:
@@ -1061,11 +1109,13 @@ def import_data(config: ConnectionConfig, table_name: str, file_contents: bytes,
                         batch.append(next(row_gen))
                 except StopIteration:
                     pass
-                
+
                 if not batch:
                     break
-                
+
                 columns = list(batch[0].keys())
+                for col in columns:
+                    validate_identifier(col, "column name")
                 placeholders = ", ".join([f":{col}" for col in columns])
                 stmt = text(f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})")
                 conn.execute(stmt, batch)
@@ -1169,13 +1219,23 @@ def stream_export_data(config: ConnectionConfig, table_name: str, file_format: s
                 yield "\n]"
         return generate_mongo()
 
+    # Validated eagerly (outside the generator below) so a hostile table
+    # name fails fast with a clean error instead of surfacing mid-stream
+    # after the StreamingResponse has already started sending bytes.
+    table_name = validate_identifier(table_name, "table name")
     engine = get_engine(config)
-    
+
     def generate():
         with engine.connect() as conn:
             # For massive tables, we should use stream_results=True if supported by dialect
             query = f"SELECT * FROM {table_name}"
             if where_clause:
+                # NOTE: where_clause is an arbitrary caller-supplied SQL
+                # predicate fragment by design (row filtering for export),
+                # not an identifier, so validate_identifier doesn't apply
+                # here. It is a separate, pre-existing risk surface;
+                # narrowing it would require parsing it as a boolean
+                # expression and is out of scope for identifier validation.
                 query += f" WHERE {where_clause}"
             
             result = conn.execution_options(stream_results=True).execute(text(query))
@@ -1300,38 +1360,42 @@ def alter_table(config: ConnectionConfig, request: AlterTableRequest):
     
     try:
         with engine.begin() as conn:
-            table = request.table_name
+            table = validate_identifier(request.table_name, "table name")
             action = request.action
-            
+
             # Basic sanitization (very rudimentary, relies on internal use)
             # In a real app, use SQLAlchemy's schema manipulation tools (Alembic) or robust quoting.
-            
+
             if action == 'add_column':
                 col_def = request.column_def
                 if not col_def:
                     raise Exception("Missing column definition for add_column")
-                
+
+                col_name = validate_identifier(col_def.name, "column name")
                 type_str = col_def.type.upper()
                 nullable_str = "NULL" if col_def.nullable else "NOT NULL"
                 default_str = f"DEFAULT {col_def.default}" if col_def.default else ""
-                
-                sql = f"ALTER TABLE {table} ADD COLUMN {col_def.name} {type_str} {nullable_str} {default_str}"
+
+                sql = f"ALTER TABLE {table} ADD COLUMN {col_name} {type_str} {nullable_str} {default_str}"
                 conn.execute(text(sql))
-                
+
             elif action == 'drop_column':
                 if not request.column_name:
                     raise Exception("Missing column name for drop_column")
-                
+
+                col_name = validate_identifier(request.column_name, "column name")
                 # SQLite does not support DROP COLUMN in older versions, but modern ones (3.35+) do.
                 # Assuming modern SQLite or standard SQL DBs.
-                sql = f"ALTER TABLE {table} DROP COLUMN {request.column_name}"
+                sql = f"ALTER TABLE {table} DROP COLUMN {col_name}"
                 conn.execute(text(sql))
-                
+
             elif action == 'rename_column':
                 if not request.column_name or not request.new_column_name:
                     raise Exception("Missing column names for rename_column")
-                
-                sql = f"ALTER TABLE {table} RENAME COLUMN {request.column_name} TO {request.new_column_name}"
+
+                col_name = validate_identifier(request.column_name, "column name")
+                new_col_name = validate_identifier(request.new_column_name, "new column name")
+                sql = f"ALTER TABLE {table} RENAME COLUMN {col_name} TO {new_col_name}"
                 conn.execute(text(sql))
                 
             # 'alter_column' is complex across dialects (modifying type/constraints).
@@ -1340,30 +1404,31 @@ def alter_table(config: ConnectionConfig, request: AlterTableRequest):
                 col_def = request.column_def
                 if not col_def or not request.column_name:
                     raise Exception("Missing data for alter_column")
-                
+
+                col_name = validate_identifier(request.column_name, "column name")
                 type_str = col_def.type.upper()
                 nullable_str = "NULL" if col_def.nullable else "NOT NULL"
-                
+
                 if config.type == 'postgresql':
                     # Postgres uses ALTER COLUMN ... TYPE ... and SET/DROP NOT NULL
-                    sql_type = f"ALTER TABLE {table} ALTER COLUMN {request.column_name} TYPE {type_str}"
+                    sql_type = f"ALTER TABLE {table} ALTER COLUMN {col_name} TYPE {type_str}"
                     conn.execute(text(sql_type))
-                    
+
                     null_action = "DROP NOT NULL" if col_def.nullable else "SET NOT NULL"
-                    sql_null = f"ALTER TABLE {table} ALTER COLUMN {request.column_name} {null_action}"
+                    sql_null = f"ALTER TABLE {table} ALTER COLUMN {col_name} {null_action}"
                     conn.execute(text(sql_null))
-                    
+
                 elif config.type == 'mysql':
                     # MySQL uses MODIFY COLUMN
-                    sql = f"ALTER TABLE {table} MODIFY COLUMN {request.column_name} {type_str} {nullable_str}"
+                    sql = f"ALTER TABLE {table} MODIFY COLUMN {col_name} {type_str} {nullable_str}"
                     conn.execute(text(sql))
-                    
+
                 else:
                     # Generic fallback or warning for SQLite
                     if config.type == 'sqlite':
                         raise Exception("SQLite does not support altering column types directly. Table recreation is required.")
-                    
-                    sql = f"ALTER TABLE {table} ALTER COLUMN {request.column_name} {type_str} {nullable_str}"
+
+                    sql = f"ALTER TABLE {table} ALTER COLUMN {col_name} {type_str} {nullable_str}"
                     conn.execute(text(sql))
             
             else:
