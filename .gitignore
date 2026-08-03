@@ -63,3 +63,6 @@ frontend/dist/
 
 # AI Config
 .gemini_config.json
+
+# AI assistant instructions (local only, not versioned)
+CLAUDE.md
